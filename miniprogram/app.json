@@ -1,0 +1,97 @@
+{
+  "pages": [
+    "pages/login/login",
+    "pages/role-select/role-select",
+    "pages/home/home",
+    "pages/demand-create/demand-create",
+    "pages/demand-list/demand-list",
+    "pages/demand-detail/demand-detail",
+    "pages/map-select/map-select",
+    "pages/design-task/design-task",
+    "pages/design-survey/design-survey",
+    "pages/construction-task/construction-task",
+    "pages/construction-submit/construction-submit",
+    "pages/timeout-list/timeout-list",
+    "pages/admin/admin",
+    "pages/staff-config/staff-config",
+    "pages/message-list/message-list",
+    "pages/profile/profile",
+    "pages/supervisor-task/supervisor-task",
+    "pages/statistics/statistics",
+    "pages/area-config/area-config",
+    "pages/role-config/role-config",
+    "pages/announcement-detail/announcement-detail",
+    "pages/ask/ask"
+  ],
+  "tabBar": {
+    "custom": true,
+    "color": "#8C8C8C",
+    "selectedColor": "#1E6F3F",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/home/home",
+        "text": "首页",
+        "iconPath": "images/tab/home.png",
+        "selectedIconPath": "images/tab/home-active.png"
+      },
+      {
+        "pagePath": "pages/demand-list/demand-list",
+        "text": "工单",
+        "iconPath": "images/tab/demand.png",
+        "selectedIconPath": "images/tab/demand-active.png"
+      },
+      {
+        "pagePath": "pages/design-task/design-task",
+        "text": "任务",
+        "iconPath": "images/tab/demand.png",
+        "selectedIconPath": "images/tab/demand-active.png"
+      },
+      {
+        "pagePath": "pages/construction-task/construction-task",
+        "text": "任务",
+        "iconPath": "images/tab/demand.png",
+        "selectedIconPath": "images/tab/demand-active.png"
+      },
+      {
+        "pagePath": "pages/supervisor-task/supervisor-task",
+        "text": "验收",
+        "iconPath": "images/tab/demand.png",
+        "selectedIconPath": "images/tab/demand-active.png"
+      },
+      {
+        "pagePath": "pages/admin/admin",
+        "text": "管理",
+        "iconPath": "images/tab/demand.png",
+        "selectedIconPath": "images/tab/demand-active.png"
+      },
+      {
+        "pagePath": "pages/message-list/message-list",
+        "text": "消息",
+        "iconPath": "images/tab/message.png",
+        "selectedIconPath": "images/tab/message-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "images/tab/profile.png",
+        "selectedIconPath": "images/tab/profile-active.png"
+      }
+    ]
+  },
+  "permission": {
+    "scope.userLocation": {
+      "desc": "用于选择需求拟建位置"
+    }
+  },
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#1E6F3F",
+    "navigationBarTitleText": "射洪建设支撑",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#F5F5F5"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}

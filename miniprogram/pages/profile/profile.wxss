@@ -1,0 +1,53 @@
+.user-card { background: linear-gradient(135deg, #1E6F3F, #2A8F55); margin: 0; padding: 48rpx 32rpx; display: flex; align-items: center; gap: 24rpx; }
+
+.avatar { width: 96rpx; height: 96rpx; border-radius: 50%; background: rgba(255,255,255,0.3); display: flex; align-items: center; justify-content: center; font-size: 40rpx; font-weight: bold; color: #fff; flex-shrink: 0; }
+
+.user-info { flex: 1; display: flex; flex-direction: column; gap: 8rpx; }
+
+.user-name { font-size: 36rpx; font-weight: bold; color: #fff; }
+
+.user-phone { font-size: 26rpx; color: rgba(255,255,255,0.8); }
+
+.role-tag { background: rgba(255,255,255,0.2); color: #fff; font-size: 22rpx; padding: 6rpx 16rpx; border-radius: 20rpx; }
+
+.menu-card { margin-top: 16rpx; }
+
+.menu-item { display: flex; align-items: center; padding: 28rpx 0; border-bottom: 1rpx solid #F5F5F5; }
+
+.menu-item:last-child { border-bottom: none; }
+
+.menu-label { flex: 1; font-size: 30rpx; color: #262626; }
+
+.menu-value { font-size: 26rpx; margin-right: 8rpx; }
+
+.arrow { font-size: 40rpx; color: #BFBFBF; }
+
+.logout-area { padding: 32rpx; }
+
+.logout-btn { width: 100%; height: 88rpx; line-height: 88rpx; border-radius: 44rpx; font-size: 30rpx; border: none; }
+
+/* 修改密码弹窗 */
+.mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 998; }
+
+.password-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 600rpx; background: #fff; border-radius: 24rpx; padding: 48rpx 40rpx; z-index: 999; box-shadow: 0 16rpx 48rpx rgba(0,0,0,0.2); }
+
+.modal-title { font-size: 36rpx; font-weight: bold; color: #333; text-align: center; margin-bottom: 32rpx; }
+
+.input-group { background: #F8F8F8; border-radius: 16rpx; padding: 8rpx 24rpx; margin-bottom: 16rpx; }
+
+.input-row { display: flex; align-items: center; padding: 20rpx 0; border-bottom: 1rpx solid #EEE; }
+
+.input-row:last-child { border-bottom: none; }
+
+.input-label { width: 180rpx; font-size: 28rpx; color: #666; flex-shrink: 0; }
+
+.input-field { flex: 1; font-size: 28rpx; color: #333; text-align: right; }
+
+.modal-tip { font-size: 22rpx; color: #999; text-align: center; margin-bottom: 24rpx; }
+
+.modal-btn-group { display: flex; flex-direction: column; gap: 16rpx; }
+
+.btn-confirm { width: 100%; height: 88rpx; background: #1E6F3F; color: #fff; border-radius: 44rpx; font-size: 30rpx; font-weight: bold; border: none; }
+
+.btn-cancel { width: 100%; height: 80rpx; background: #F5F5F5; color: #666; border-radius: 40rpx; font-size: 28rpx; border: none; }
+

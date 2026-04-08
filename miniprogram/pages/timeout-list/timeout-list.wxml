@@ -1,0 +1,42 @@
+<view class="page-container">
+  <view class="list-wrap" wx:if="{{list.length > 0}}">
+    <view
+      class="timeout-item card"
+      wx:for="{{list}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      bindtap="onTapItem"
+    >
+      <view class="flex-between">
+        <text class="demand-no">{{item.demandNo}}</text>
+        <status-badge status="{{item.status}}" />
+      </view>
+      <view class="timeout-info mt-16">
+        <text class="text-secondary">{{item.acceptArea}}</text>
+        <text class="text-secondary" wx:if="{{item.submitter}}"> 👤 {{item.submitter}}</text>
+      </view>
+      <view class="timeout-info-row mt-16">
+        <text class="text-secondary">{{item.type}}</text>
+        <text class="text-hint location-text" wx:if="{{item.location}}">{{item.location}}</text>
+      </view>
+      <view class="timeout-footer mt-16">
+        <text class="text-danger timeout-days">已超时 {{item.timeoutDays}} 天</text>
+        <button
+          class="remind-btn"
+          size="mini"
+          data-id="{{item.id}}"
+          catchtap="onSendRemind"
+        >
+          飞书提醒
+        </button>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty-state" wx:elif="{{!loading}}">
+    <text class="empty-text">暂无超时需求</text>
+  </view>
+
+  <view class="load-more" wx:if="{{loading}}"><text>加载中...</text></view>
+  <view class="load-more" wx:elif="{{!hasMore && list.length > 0}}"><text>已加载全部</text></view>
+</view>

@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "需求详情",
+  "usingComponents": {
+    "status-badge": "../../components/status-badge/status-badge",
+    "timeline": "../../components/timeline/timeline"
+  }
+}

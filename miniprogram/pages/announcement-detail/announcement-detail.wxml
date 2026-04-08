@@ -1,0 +1,13 @@
+<view class="page-container">
+  <view wx:if="{{loading}}" class="loading-tip">加载中...</view>
+  <view wx:elif="{{!announcement}}" class="empty-tip">公告不存在</view>
+  <view wx:else class="announcement-card">
+    <text class="ann-title">{{announcement.title}}</text>
+    <view class="ann-meta">
+      <text class="ann-time">发布时间：{{publishTime}}</text>
+      <text class="ann-time" wx:if="{{endTime}}">有效期至：{{endTime}}</text>
+    </view>
+    <view class="divider"></view>
+    <text class="ann-content">{{announcement.content}}</text>
+  </view>
+</view>

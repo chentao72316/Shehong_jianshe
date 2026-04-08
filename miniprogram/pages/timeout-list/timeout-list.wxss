@@ -1,0 +1,36 @@
+.list-wrap { padding: 16rpx; }
+
+.timeout-item { margin: 0 0 16rpx; }
+
+.demand-no { font-size: 28rpx; font-weight: bold; color: #262626; }
+
+.timeout-info { font-size: 26rpx; }
+
+.timeout-info-row {
+  font-size: 26rpx;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.location-text {
+  font-size: 24rpx;
+  color: #8c8c8c;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 380rpx;
+}
+
+.timeout-footer { display: flex; justify-content: space-between; align-items: center; }
+
+.timeout-days { font-size: 26rpx; font-weight: bold; }
+
+.remind-btn { background: #1890FF; color: #fff; border: none; border-radius: 8rpx; font-size: 24rpx; padding: 0 24rpx; height: 56rpx; line-height: 56rpx; }
+
+.empty-state { display: flex; align-items: center; justify-content: center; padding: 120rpx 0; }
+
+.empty-text { font-size: 28rpx; color: #BFBFBF; }
+
+.load-more { text-align: center; padding: 24rpx; font-size: 24rpx; color: #BFBFBF; }

@@ -1,0 +1,64 @@
+<view class="page-container">
+  <view class="card" wx:if="{{demand}}">
+    <text class="section-title">需求信息</text>
+    <text class="text-secondary">{{demand.demandNo}} | {{demand.type}} | {{demand.acceptArea}}</text>
+  </view>
+
+  <view class="card">
+    <text class="section-title">完工填报</text>
+
+    <view class="form-item">
+      <text class="form-label required">建成覆盖范围名称</text>
+      <input class="form-input" placeholder="请填写覆盖范围名称" data-field="coverageName" bindinput="onInputChange" value="{{form.coverageName}}" />
+      <text class="error-tip" wx:if="{{errors.coverageName}}">{{errors.coverageName}}</text>
+    </view>
+
+    <view class="form-item">
+      <text class="form-label required">资管生效状态</text>
+      <picker range="{{assetStatusOptions}}" bindchange="onAssetStatusChange">
+        <view class="picker-value {{form.assetStatus ? '' : 'placeholder'}}">
+          {{form.assetStatus || '请选择'}}
+        </view>
+      </picker>
+      <text class="error-tip" wx:if="{{errors.assetStatus}}">{{errors.assetStatus}}</text>
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">完工位置（可选）</text>
+      <view class="location-selector" bindtap="onChooseLocation">
+        <text wx:if="{{form.latitude}}">已选择：{{form.latitude}},{{form.longitude}}</text>
+        <text wx:else class="placeholder">点击选择地图位置</text>
+      </view>
+    </view>
+
+    <view class="form-item">
+      <text class="form-label required">现场照片（最多9张）</text>
+      <view class="photo-grid">
+        <image
+          wx:for="{{form.photos}}"
+          wx:key="index"
+          src="{{item}}"
+          class="photo-thumb"
+          mode="aspectFill"
+          data-index="{{index}}"
+          bindtap="onDeletePhoto"
+        />
+        <view class="photo-add" bindtap="onChoosePhotos" wx:if="{{form.photos.length < 9}}">
+          <text>+</text>
+        </view>
+      </view>
+      <text class="error-tip" wx:if="{{errors.photos}}">{{errors.photos}}</text>
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">备注</text>
+      <textarea class="form-textarea" placeholder="选填" data-field="remark" bindinput="onInputChange" value="{{form.remark}}" />
+    </view>
+  </view>
+
+  <view class="submit-bar">
+    <button class="btn-primary submit-btn" bindtap="onSubmit" loading="{{submitting}}">
+      提交完工信息
+    </button>
+  </view>
+</view>

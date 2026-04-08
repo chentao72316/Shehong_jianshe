@@ -1,0 +1,49 @@
+<view class="tab-bar">
+  <!-- 左侧：首页 -->
+  <view
+    class="tab-item {{selected === 0 ? 'tab-item--active' : ''}}"
+    data-index="0"
+    bindtap="onTap"
+  >
+    <view class="tab-icon" style="background-image:url({{tabs[0].iconUrl}})"></view>
+    <text class="tab-text">{{tabs[0].text}}</text>
+  </view>
+
+  <!-- 左侧：工单/任务 -->
+  <view
+    class="tab-item {{selected === 1 ? 'tab-item--active' : ''}}"
+    data-index="1"
+    bindtap="onTap"
+  >
+    <view class="tab-icon" style="background-image:url({{tabs[1].iconUrl}})"></view>
+    <text class="tab-text">{{tabs[1].text}}</text>
+  </view>
+
+  <!-- 中央：「问问」凸起按钮 -->
+  <view class="tab-center-wrap">
+    <view class="tab-center-btn" bindtap="onTapAsk">
+      <view class="tab-center-icon"></view>
+    </view>
+    <text class="tab-center-text">问问</text>
+  </view>
+
+  <!-- 右侧：消息 -->
+  <view
+    class="tab-item {{selected === 2 ? 'tab-item--active' : ''}}"
+    data-index="2"
+    bindtap="onTap"
+  >
+    <view class="tab-icon" style="background-image:url({{tabs[2].iconUrl}})"></view>
+    <text class="tab-text">{{tabs[2].text}}</text>
+  </view>
+
+  <!-- 右侧：我的 -->
+  <view
+    class="tab-item {{selected === 3 ? 'tab-item--active' : ''}}"
+    data-index="3"
+    bindtap="onTap"
+  >
+    <view class="tab-icon" style="background-image:url({{tabs[3].iconUrl}})"></view>
+    <text class="tab-text">{{tabs[3].text}}</text>
+  </view>
+</view>

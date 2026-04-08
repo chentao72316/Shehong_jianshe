@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "需求列表",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "demand-card": "../../components/demand-card/demand-card"
+  }
+}

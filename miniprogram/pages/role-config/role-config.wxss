@@ -1,0 +1,39 @@
+.tip-card { }
+.tip-text { display: block; font-size: 26rpx; color: #595959; margin-bottom: 8rpx; }
+.tip-note { display: block; font-size: 22rpx; color: #8C8C8C; line-height: 1.6; }
+
+.role-row { display: flex; align-items: flex-start; padding: 20rpx 0; border-bottom: 1rpx solid #F5F5F5; }
+.role-row:last-child { border-bottom: none; }
+.header-row { padding: 12rpx 0; }
+.header-row .col-role, .header-row .col-scope, .header-row .col-action { font-size: 24rpx; color: #8C8C8C; }
+
+.col-role { flex: 1; display: flex; flex-direction: column; gap: 4rpx; }
+.col-scope { width: 160rpx; display: flex; align-items: center; }
+.col-action { width: 80rpx; text-align: right; }
+
+.role-label { font-size: 30rpx; color: #262626; }
+.role-desc { font-size: 22rpx; color: #8C8C8C; line-height: 1.5; }
+
+.scope-badge { display: inline-block; font-size: 22rpx; padding: 4rpx 12rpx; border-radius: 6rpx; }
+.scope-all { background: #E6F7FF; color: #096DD9; }
+.scope-area { background: #F9F0FF; color: #531DAB; }
+.scope-grid { background: #FFF7E6; color: #AD6800; }
+.scope-self { background: #F5F5F5; color: #595959; }
+.scope-assigned { background: #F6FFED; color: #389E0D; }
+
+.action-link { font-size: 26rpx; color: #1890FF; }
+
+.loading-state { padding: 60rpx; text-align: center; }
+
+.modal-mask { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal-box { background: #fff; border-radius: 24rpx; padding: 40rpx; width: 620rpx; }
+.modal-title { display: block; font-size: 32rpx; font-weight: 600; color: #262626; margin-bottom: 28rpx; text-align: center; }
+
+.scope-options { display: flex; flex-direction: column; gap: 16rpx; margin-bottom: 8rpx; }
+.scope-option { border: 2rpx solid #E8E8E8; border-radius: 12rpx; padding: 20rpx 24rpx; }
+.scope-option-active { border-color: #1E6F3F; background: #F6FFED; }
+.scope-option-label { display: block; font-size: 28rpx; color: #262626; margin-bottom: 4rpx; }
+.scope-option-desc { display: block; font-size: 22rpx; color: #8C8C8C; }
+
+.modal-btns { display: flex; gap: 24rpx; margin-top: 32rpx; }
+.modal-btn { flex: 1; font-size: 30rpx; }

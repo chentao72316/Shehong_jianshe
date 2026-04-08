@@ -1,0 +1,56 @@
+.filter-bar {
+  background: #fff;
+  padding: 16rpx 32rpx;
+  display: flex;
+  align-items: center;
+  border-bottom: 1rpx solid #F5F5F5;
+  overflow-x: auto;
+}
+
+radio-group {
+  display: flex;
+  gap: 8rpx;
+  white-space: nowrap;
+}
+
+.stage-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 8rpx 20rpx;
+  border-radius: 32rpx;
+  background: #F5F5F5;
+  font-size: 26rpx;
+  color: #666;
+}
+
+.stage-tab.active {
+  background: #1890FF;
+  color: #fff;
+}
+
+.stage-tab radio {
+  display: none;
+}
+
+.list-wrap {
+  padding: 16rpx;
+}
+
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 120rpx 0;
+}
+
+.empty-text {
+  font-size: 28rpx;
+  color: #BFBFBF;
+}
+
+.load-more {
+  text-align: center;
+  padding: 24rpx;
+  font-size: 24rpx;
+  color: #BFBFBF;
+}

@@ -1,0 +1,176 @@
+/* ── 卡片容器 ── */
+.demand-card {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 28rpx 28rpx 20rpx;
+  margin: 0 0 18rpx;
+  box-shadow: 0 2rpx 14rpx rgba(0, 0, 0, 0.07);
+  position: relative;
+  overflow: hidden;
+}
+
+/* ── 右上角对角线状态丝带 ── */
+.ribbon {
+  position: absolute;
+  top: 18rpx;
+  right: -34rpx;
+  width: 170rpx;
+  padding: 9rpx 0;
+  text-align: center;
+  transform: rotate(45deg);
+  font-size: 20rpx;
+  font-weight: bold;
+  color: #fff;
+  letter-spacing: 2rpx;
+  /* 丝带颜色通过 style 动态注入 */
+}
+
+/* ── 工单编号行 ── */
+.card-no-row {
+  margin-bottom: 12rpx;
+  padding-right: 60rpx;  /* 给丝带留出空间 */
+}
+
+.demand-no {
+  font-size: 30rpx;
+  font-weight: bold;
+  color: #1a1a1a;
+  letter-spacing: 1rpx;
+}
+
+/* ── 区域行 ── */
+.area-row {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  margin-bottom: 8rpx;
+}
+
+.area-pin {
+  font-size: 22rpx;
+}
+
+.area-text {
+  font-size: 24rpx;
+  color: #595959;
+}
+
+/* ── 提交人 + 地址行 ── */
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 10rpx;
+  flex-wrap: wrap;
+}
+
+.info-text {
+  font-size: 22rpx;
+  color: #8C8C8C;
+  white-space: nowrap;
+}
+
+.info-location {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 420rpx;
+}
+
+/* ── 标签行 ── */
+.tag-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 18rpx;
+  flex-wrap: wrap;
+}
+
+.tag {
+  display: inline-block;
+  padding: 4rpx 14rpx;
+  border-radius: 6rpx;
+  font-size: 22rpx;
+  font-weight: 500;
+}
+
+.tag-biz {
+  background: #E6F4FF;
+  color: #1677FF;
+}
+
+.tag-type {
+  background: #F0F5FF;
+  color: #2F54EB;
+}
+
+.tag-urgent {
+  background: #FFFBE6;
+  color: #D48806;
+}
+
+.tag-critical {
+  background: #FFF1F0;
+  color: #CF1322;
+  font-weight: bold;
+}
+
+/* ── 分隔线 ── */
+.divider {
+  height: 1rpx;
+  background: #F0F0F0;
+  margin-bottom: 16rpx;
+}
+
+/* ── 底部 ── */
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+}
+
+.clock {
+  font-size: 22rpx;
+}
+
+.created-at {
+  font-size: 22rpx;
+  color: #BFBFBF;
+}
+
+.footer-right {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.days-ok {
+  font-size: 22rpx;
+  color: #389E0D;
+  background: #F6FFED;
+  border: 1rpx solid #B7EB8F;
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+}
+
+.days-over {
+  font-size: 22rpx;
+  color: #CF1322;
+  background: #FFF1F0;
+  border: 1rpx solid #FFA39E;
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+  font-weight: bold;
+}
+
+.arrow {
+  font-size: 36rpx;
+  color: #D9D9D9;
+  line-height: 1;
+}

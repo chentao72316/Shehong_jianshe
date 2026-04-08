@@ -1,0 +1,127 @@
+<view class="page-container">
+  <!-- 指派模式：显示需求信息 -->
+  <view class="card" wx:if="{{assignMode && demand}}">
+    <text class="section-title">指派设计单位</text>
+    <view class="info-row">
+      <text class="info-key">需求编号：</text>
+      <text class="info-val">{{demand.demandNo}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-key">受理区域：</text>
+      <text class="info-val">{{demand.acceptArea}}</text>
+    </view>
+    <view class="info-row">
+      <text class="info-key">当前状态：</text>
+      <text class="info-val text-warning">{{demand.status}}</text>
+    </view>
+  </view>
+
+  <view class="card">
+    <text class="section-title">{{assignMode ? '可选设计单位' : '人员列表'}}</text>
+    <view class="staff-list">
+      <!-- 指派模式：点击选择设计单位 -->
+      <view class="staff-item" wx:for="{{staffList}}" wx:key="id" data-index="{{index}}" bindtap="{{assignMode ? 'onSelectStaff' : 'onEditStaff'}}">
+        <view class="staff-info">
+          <text class="staff-name">{{item.name}}</text>
+          <text class="staff-role text-secondary">{{item.roleLabel}}</text>
+        </view>
+        <view class="staff-right">
+          <text class="staff-phone text-hint">{{item.phone}}</text>
+          <text class="edit-btn text-primary" wx:if="{{!assignMode}}">编辑</text>
+          <text class="select-btn text-success" wx:else>选择</text>
+        </view>
+      </view>
+    </view>
+    <view class="empty-state" wx:if="{{staffList.length === 0 && !loading}}">
+      <text class="text-hint">{{assignMode ? '暂无设计单位人员' : '暂无人员数据'}}</text>
+    </view>
+  </view>
+
+  <!-- 分页导航 -->
+  <view class="pagination" wx:if="{{totalPages > 1}}">
+    <view class="pagination-info">{{(page - 1) * pageSize + 1}}-{{page * pageSize > total ? total : page * pageSize}} / {{total}}</view>
+    <view class="pagination-btns">
+      <view class="page-btn {{page <= 1 ? 'disabled' : ''}}" bindtap="onPrevPage">上一页</view>
+      <text class="page-num">{{page}} / {{totalPages}}</text>
+      <view class="page-btn {{page >= totalPages ? 'disabled' : ''}}" bindtap="onNextPage">下一页</view>
+    </view>
+  </view>
+  <view class="pagination" wx:if="{{totalPages <= 1 && total > 0}}">
+    <view class="pagination-info">共 {{total}} 人</view>
+  </view>
+
+  <!-- 编辑弹窗 -->
+  <view class="modal-mask" wx:if="{{showEditModal}}" bindtap="onCloseModal">
+    <view class="modal-box" catchtap="noop">
+      <text class="modal-title">编辑人员信息</text>
+      <view class="form-item">
+        <text class="form-label">姓名</text>
+        <input class="form-input" value="{{editingStaff.name || ''}}" data-field="name" bindinput="onEditInput" />
+      </view>
+      <view class="form-item">
+        <text class="form-label">手机号</text>
+        <input class="form-input" type="number" value="{{editingStaff.phone || ''}}" data-field="phone" bindinput="onEditInput" />
+      </view>
+      <view class="form-item">
+        <text class="form-label">单位</text>
+        <view class="picker-row" data-type="area" bindtap="onOpenFieldPicker">
+          <text class="{{editingStaff.area ? 'picker-val' : 'picker-placeholder'}}">{{editingStaff.area || '请选择单位'}}</text>
+          <text class="picker-arrow">›</text>
+        </view>
+      </view>
+      <view class="form-item">
+        <text class="form-label">部门/网格</text>
+        <view class="picker-row" data-type="gridName" bindtap="onOpenFieldPicker">
+          <text class="{{editingStaff.gridName ? 'picker-val' : 'picker-placeholder'}}">{{editingStaff.gridName || '请选择部门/网格'}}</text>
+          <text class="picker-arrow">›</text>
+        </view>
+      </view>
+      <view class="form-item">
+        <text class="form-label">角色</text>
+        <picker range="{{roleOptions}}" range-key="label" bindchange="onEditRoleChange">
+          <view class="picker-value">{{editingStaff.roleLabel || '请选择'}}</view>
+        </picker>
+      </view>
+      <view class="form-item">
+        <text class="form-label">工号</text>
+        <input class="form-input" value="{{editingStaff.employeeId || ''}}" data-field="employeeId" bindinput="onEditInput" />
+      </view>
+      <view class="form-item">
+        <text class="form-label">人员属性</text>
+        <input class="form-input" value="{{editingStaff.staffType || ''}}" data-field="staffType" bindinput="onEditInput" />
+      </view>
+      <view class="form-item">
+        <text class="form-label">飞书ID（可选）</text>
+        <input class="form-input" value="{{editingStaff.feishuId || ''}}" data-field="feishuId" bindinput="onEditInput" />
+      </view>
+      <view class="modal-btns">
+        <button class="btn-default modal-btn" bindtap="onCloseModal">取消</button>
+        <button class="btn-primary modal-btn" bindtap="onSaveStaff">保存</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 字段选择弹窗（单位 / 部门/网格） -->
+  <view class="modal-mask" wx:if="{{showFieldPicker}}" bindtap="onCloseFieldPicker">
+    <view class="modal-box" catchtap>
+      <text class="modal-title">{{fieldPickerTitle}}</text>
+      <scroll-view scroll-y style="max-height: 360rpx;">
+        <view
+          class="option-item"
+          wx:for="{{fieldOptionList}}"
+          wx:key="*this"
+          data-value="{{item}}"
+          bindtap="onSelectFieldOption"
+        >{{item}}</view>
+        <view class="option-item option-item-add" bindtap="onShowFieldManualInput">+ 手动输入新名称</view>
+      </scroll-view>
+      <view wx:if="{{showFieldManualInput}}" class="manual-input-row">
+        <input class="form-input manual-input" placeholder="请输入新名称" bindinput="onFieldManualInputChange" value="{{fieldManualInputValue}}" />
+        <button class="btn-primary manual-confirm-btn" bindtap="onConfirmFieldManualInput">确定</button>
+      </view>
+      <view class="modal-btns">
+        <button class="btn-default modal-btn" bindtap="onCloseFieldPicker">取消</button>
+      </view>
+    </view>
+  </view>
+</view>

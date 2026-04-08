@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "超时督办",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "status-badge": "../../components/status-badge/status-badge"
+  }
+}

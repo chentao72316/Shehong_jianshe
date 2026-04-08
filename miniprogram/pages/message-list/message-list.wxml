@@ -1,0 +1,34 @@
+<view class="page-container">
+  <view class="msg-list" wx:if="{{messages.length > 0}}">
+    <view
+      class="msg-item {{item.read ? '' : 'unread'}} {{item.type === 'system' ? 'system-msg' : ''}}"
+      wx:for="{{messages}}"
+      wx:key="id"
+      data-id="{{item.id}}"
+      data-demand-id="{{item.demandId}}"
+      data-demand-no="{{item.demandNo}}"
+      data-read="{{item.read}}"
+      data-type="{{item.type}}"
+      bindtap="onTapMessage"
+    >
+      <view class="msg-dot" wx:if="{{!item.read}}"></view>
+      <view class="msg-content">
+        <view class="msg-header">
+          <view class="msg-title-row">
+            <text class="msg-type-tag system-tag" wx:if="{{item.type === 'system'}}">公告</text>
+            <text class="msg-title">{{item.title}}</text>
+          </view>
+          <text class="msg-time">{{item.timeStr}}</text>
+        </view>
+        <text class="msg-body">{{item.content}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty-state" wx:elif="{{!loading}}">
+    <text class="empty-text">暂无消息</text>
+  </view>
+
+  <view class="load-more" wx:if="{{loading}}"><text>加载中...</text></view>
+  <view class="load-more" wx:elif="{{!hasMore && messages.length > 0}}"><text>已加载全部</text></view>
+</view>

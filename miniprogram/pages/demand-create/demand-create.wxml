@@ -1,0 +1,145 @@
+<view class="page-container">
+  <!-- 受理区域与自动带出信息 -->
+  <view class="card">
+    <view class="form-item">
+      <text class="form-label required">受理区域</text>
+      <picker range="{{availableAreas}}" bindchange="onAreaChange">
+        <view class="picker-value {{form.acceptArea ? '' : 'placeholder'}}">
+          {{form.acceptArea || '请选择受理区域'}}
+        </view>
+      </picker>
+      <text class="error-tip" wx:if="{{errors.acceptArea}}">{{errors.acceptArea}}</text>
+      <text class="cross-area-tip" wx:if="{{isCrossArea}}">该工单受理区域与您所在网格不同，提交后需经网格经理审核</text>
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">部门/网格</text>
+      <input class="form-input form-input-readonly" disabled value="{{form.serviceCenter}}" placeholder="根据提交人所属自动带出" />
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">网络支撑中心</text>
+      <input class="form-input form-input-readonly" disabled value="{{form.networkSupport}}" placeholder="根据部门/网格自动带出" />
+    </view>
+
+    <!-- 提交人手机 -->
+    <view class="form-item">
+      <text class="form-label">提交人手机号</text>
+      <input class="form-input" type="number" maxlength="11" placeholder="请输入手机号" data-field="submitterPhone" bindinput="onInputChange" value="{{form.submitterPhone}}" />
+    </view>
+
+    <!-- 需求人信息 -->
+    <view class="form-item">
+      <text class="form-label">需求人姓名</text>
+      <input class="form-input" placeholder="请输入姓名" data-field="demandPersonName" bindinput="onInputChange" value="{{form.demandPersonName}}" />
+    </view>
+
+    <view class="form-item">
+      <text class="form-label required">需求人联系方式</text>
+      <input class="form-input" type="number" maxlength="11" placeholder="请输入手机号" data-field="demandPersonPhone" bindinput="onInputChange" value="{{form.demandPersonPhone}}" />
+      <text class="error-tip" wx:if="{{errors.demandPersonPhone}}">{{errors.demandPersonPhone}}</text>
+    </view>
+  </view>
+
+  <!-- 需求信息 -->
+  <view class="card">
+    <view class="form-item">
+      <text class="form-label required">业务类型</text>
+      <picker range="{{businessTypes}}" bindchange="onBusinessTypeChange">
+        <view class="picker-value {{form.businessType ? '' : 'placeholder'}}">
+          {{form.businessType || '请选择业务类型'}}
+        </view>
+      </picker>
+      <text class="error-tip" wx:if="{{errors.businessType}}">{{errors.businessType}}</text>
+    </view>
+
+    <view class="form-item">
+      <text class="form-label required">需求类型</text>
+      <picker range="{{demandTypes}}" bindchange="onDemandTypeChange">
+        <view class="picker-value {{form.demandType ? '' : 'placeholder'}}">
+          {{form.demandType || '请选择需求类型'}}
+        </view>
+      </picker>
+      <text class="error-tip" wx:if="{{errors.demandType}}">{{errors.demandType}}</text>
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">已预约客户数</text>
+      <input class="form-input" type="number" placeholder="请输入正整数" data-field="reservedCustomers" bindinput="onInputChange" value="{{form.reservedCustomers}}" />
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">拟建DP箱个数</text>
+      <input class="form-input" type="number" placeholder="请输入正整数" data-field="dpBoxCount" bindinput="onInputChange" value="{{form.dpBoxCount}}" />
+    </view>
+
+    <view class="form-item">
+      <text class="form-label">紧急程度</text>
+      <picker range="{{urgencyLevels}}" bindchange="onUrgencyChange">
+        <view class="picker-value">{{form.urgency}}</view>
+      </picker>
+    </view>
+  </view>
+
+  <!-- 位置信息 -->
+  <view class="card">
+    <view class="form-item">
+      <text class="form-label">拟建位置</text>
+      <view class="location-selector" bindtap="onChooseLocation">
+        <text wx:if="{{form.latitude}}">已选择：{{form.latitude}},{{form.longitude}}</text>
+        <text wx:else class="placeholder">点击选择地图位置</text>
+      </view>
+    </view>
+
+    <view class="form-item">
+      <text class="form-label required">拟建位置详细描述</text>
+      <textarea class="form-textarea" placeholder="请描述位置详情" data-field="locationDetail" bindinput="onInputChange" value="{{form.locationDetail}}" />
+      <text class="error-tip" wx:if="{{errors.locationDetail}}">{{errors.locationDetail}}</text>
+    </view>
+  </view>
+
+  <!-- 现场照片/附件 -->
+  <view class="card">
+    <view class="form-item">
+      <text class="form-label">附件（最多6个）</text>
+      <view class="photo-grid">
+        <view
+          wx:for="{{form.photos}}"
+          wx:key="index"
+          class="photo-item"
+          data-index="{{index}}"
+          bindtap="onDeletePhoto"
+        >
+          <image
+            wx:if="{{item.type === 'image'}}"
+            src="{{item.url}}"
+            class="photo-thumb"
+            mode="aspectFill"
+          />
+          <view wx:else class="file-item">
+            <text class="file-icon">📄</text>
+            <text class="file-name">{{item.name}}</text>
+          </view>
+        </view>
+        <view class="photo-add" bindtap="onChoosePhotos" wx:if="{{form.photos.length < 6}}">
+          <text>+</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <!-- 备注 -->
+  <view class="card">
+    <view class="form-item">
+      <text class="form-label">备注</text>
+      <textarea class="form-textarea" placeholder="选填" data-field="remark" bindinput="onInputChange" value="{{form.remark}}" />
+    </view>
+  </view>
+
+  <!-- 提交按钮 -->
+  <view class="submit-bar">
+    <button class="btn-primary submit-btn" bindtap="onSubmit" loading="{{submitting}}">
+      提交需求
+    </button>
+  </view>
+</view>

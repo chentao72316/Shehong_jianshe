@@ -1,0 +1,117 @@
+<view class="login-page">
+  <view class="logo-area">
+    <view class="logo-icon">建</view>
+    <text class="app-name">SNYD N/W 支撑</text>
+    <text class="app-desc">一线支撑应用平台</text>
+  </view>
+
+  <!-- Tab 切换 -->
+  <view class="tab-bar">
+    <view
+      class="tab-item {{currentTab === 'wx' ? 'active' : ''}}"
+      bindtap="switchTab"
+      data-tab="wx"
+    >
+      微信登录
+    </view>
+    <view
+      class="tab-item {{currentTab === 'phone' ? 'active' : ''}}"
+      bindtap="switchTab"
+      data-tab="phone"
+    >
+      手机号登录
+    </view>
+  </view>
+
+  <!-- 微信登录区 -->
+  <view class="login-area" wx:if="{{currentTab === 'wx'}}">
+    <button
+      class="btn-login btn-wx"
+      bindtap="onWxLogin"
+      loading="{{loading}}"
+      disabled="{{loading}}"
+    >
+      微信一键登录
+    </button>
+    <text class="login-tip">登录即代表您已阅读并同意相关服务协议</text>
+  </view>
+
+  <!-- 手机号登录区 -->
+  <view class="login-area" wx:if="{{currentTab === 'phone'}}">
+    <view class="input-group">
+      <view class="input-row">
+        <text class="input-label">手机号</text>
+        <input
+          class="input-field"
+          type="number"
+          maxlength="11"
+          placeholder="请输入手机号"
+          bindinput="onPhoneInput"
+          value="{{phone}}"
+          disabled="{{loading}}"
+        />
+      </view>
+      <view class="input-row">
+        <text class="input-label">密码</text>
+        <input
+          class="input-field"
+          type="password"
+          placeholder="请输入密码"
+          bindinput="onPasswordInput"
+          value="{{password}}"
+          disabled="{{loading}}"
+        />
+      </view>
+    </view>
+    <button
+      class="btn-login btn-phone"
+      bindtap="onPhoneLogin"
+      loading="{{loading}}"
+      disabled="{{loading}}"
+    >
+      登录
+    </button>
+    <text class="login-tip">登录即代表您已阅读并同意相关服务协议</text>
+  </view>
+
+  <!-- 绑定手机号弹窗（微信登录未绑定时显示） -->
+  <view class="mask" wx:if="{{showBindModal}}" bindtap="onCancelBind"></view>
+  <view class="bind-modal" wx:if="{{showBindModal}}">
+    <view class="bind-modal-title">绑定手机号</view>
+    <view class="bind-modal-desc">为确保账号安全，请验证您的手机号</view>
+    <view class="bind-input-group">
+      <view class="input-row">
+        <text class="input-label">手机号</text>
+        <input
+          class="input-field"
+          type="number"
+          maxlength="11"
+          placeholder="请输入手机号"
+          bindinput="onBindPhoneInput"
+          value="{{bindPhone}}"
+        />
+      </view>
+      <view class="input-row">
+        <text class="input-label">密码</text>
+        <input
+          class="input-field"
+          type="password"
+          placeholder="请输入密码"
+          bindinput="onBindPasswordInput"
+          value="{{bindPassword}}"
+        />
+      </view>
+    </view>
+    <view class="bind-btn-group">
+      <button
+        class="btn-bind"
+        bindtap="onConfirmBind"
+        loading="{{bindLoading}}"
+        disabled="{{bindLoading}}"
+      >
+        确认绑定并登录
+      </button>
+      <view class="bind-tip">绑定后下次可一键微信登录</view>
+    </view>
+  </view>
+</view>

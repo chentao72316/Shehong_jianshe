@@ -1,0 +1,19 @@
+<view class="page-container">
+  <view class="welcome-area">
+    <text class="welcome-text">你好，{{userInfo.name}}</text>
+    <text class="welcome-tip">请选择当前使用的角色</text>
+  </view>
+
+  <view class="role-list">
+    <view
+      class="role-item"
+      wx:for="{{roles}}"
+      wx:key="key"
+      data-role="{{item.key}}"
+      bindtap="onSelectRole"
+    >
+      <text class="role-label">{{item.label}}</text>
+      <text class="arrow">›</text>
+    </view>
+  </view>
+</view>

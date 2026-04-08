@@ -1,0 +1,15 @@
+<view class="map-page">
+  <map
+    class="map"
+    latitude="{{latitude}}"
+    longitude="{{longitude}}"
+    markers="{{markers}}"
+    scale="{{scale}}"
+    show-location
+    bindtap="onMapTap"
+  />
+  <view class="confirm-bar">
+    <text class="location-text">已选：{{latitude}}, {{longitude}}</text>
+    <button class="btn-primary confirm-btn" bindtap="onConfirm">确认位置</button>
+  </view>
+</view>

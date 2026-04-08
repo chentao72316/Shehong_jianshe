@@ -1,0 +1,162 @@
+<view class="page-container">
+  <!-- 工具栏 -->
+  <view class="card toolbar">
+    <button class="btn-primary add-btn" bindtap="onAdd">+ 新增区域配置</button>
+  </view>
+
+  <!-- 区域配置列表 -->
+  <view class="card" wx:if="{{list.length > 0}}">
+    <view class="area-item" wx:for="{{list}}" wx:key="_id">
+      <view class="area-header">
+        <text class="area-name">{{item.acceptArea}}</text>
+        <view class="area-actions">
+          <text class="action-link" data-item="{{item}}" bindtap="onEdit">编辑</text>
+          <text class="action-link text-danger" data-id="{{item._id}}" bindtap="onDelete">删除</text>
+        </view>
+      </view>
+      <view class="area-info-row">
+        <text class="info-label">网络支撑中心：</text>
+        <text class="info-val">{{item.networkCenter || '-'}}</text>
+      </view>
+      <view class="area-info-row">
+        <text class="info-label">设计候选人：</text>
+        <text class="info-val">{{item._designNames || '-'}}</text>
+      </view>
+      <view class="area-info-row">
+        <text class="info-label">施工候选人：</text>
+        <text class="info-val">{{item._constructionNames || '-'}}</text>
+      </view>
+      <view class="area-info-row">
+        <text class="info-label">监理候选人：</text>
+        <text class="info-val">{{item._supervisorNames || '-'}}</text>
+      </view>
+      <view class="area-info-row">
+        <text class="info-label">确认经理：</text>
+        <text class="info-val">{{item._networkManagerName || '-'}}</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="empty-state" wx:elif="{{!loading}}">
+    <text class="empty-text">暂无区域配置，点击上方按钮新增</text>
+  </view>
+
+  <view class="loading-state" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+
+  <!-- 编辑弹窗 -->
+  <view class="modal-mask" wx:if="{{showModal}}" bindtap="onCloseModal">
+    <view class="modal-box" catchtap>
+      <text class="modal-title">{{editId ? '编辑区域配置' : '新增区域配置'}}</text>
+      <scroll-view scroll-y class="modal-scroll">
+        <view class="form-item">
+          <text class="form-label required">受理区域名称</text>
+          <view class="picker-row {{editId ? 'picker-row-disabled' : ''}}" data-type="acceptArea" bindtap="onOpenOptionPicker">
+            <text class="{{form.acceptArea ? 'picker-val' : 'picker-placeholder'}}">{{form.acceptArea || '请选择受理区域'}}</text>
+            <text class="picker-arrow" wx:if="{{!editId}}">›</text>
+          </view>
+        </view>
+        <view class="form-item">
+          <text class="form-label">网络支撑中心</text>
+          <view class="picker-row" data-type="networkCenter" bindtap="onOpenOptionPicker">
+            <text class="{{form.networkCenter ? 'picker-val' : 'picker-placeholder'}}">{{form.networkCenter || '请选择网络支撑中心'}}</text>
+            <text class="picker-arrow">›</text>
+          </view>
+        </view>
+        <view class="form-item">
+          <text class="form-label">设计候选人</text>
+          <view class="candidate-list">
+            <view class="candidate-tag" wx:for="{{form.designCandidates}}" wx:key="id">
+              <text>{{item.name}}</text>
+              <text class="remove-tag" data-type="design" data-idx="{{index}}" bindtap="onRemoveCandidate">×</text>
+            </view>
+            <view class="candidate-add" data-type="design" bindtap="onPickCandidate">+ 添加</view>
+          </view>
+        </view>
+        <view class="form-item">
+          <text class="form-label">施工候选人</text>
+          <view class="candidate-list">
+            <view class="candidate-tag" wx:for="{{form.constructionCandidates}}" wx:key="id">
+              <text>{{item.name}}</text>
+              <text class="remove-tag" data-type="construction" data-idx="{{index}}" bindtap="onRemoveCandidate">×</text>
+            </view>
+            <view class="candidate-add" data-type="construction" bindtap="onPickCandidate">+ 添加</view>
+          </view>
+        </view>
+        <view class="form-item">
+          <text class="form-label">监理候选人</text>
+          <view class="candidate-list">
+            <view class="candidate-tag" wx:for="{{form.supervisorCandidates}}" wx:key="id">
+              <text>{{item.name}}</text>
+              <text class="remove-tag" data-type="supervisor" data-idx="{{index}}" bindtap="onRemoveCandidate">×</text>
+            </view>
+            <view class="candidate-add" data-type="supervisor" bindtap="onPickCandidate">+ 添加</view>
+          </view>
+        </view>
+        <view class="form-item">
+          <text class="form-label">确认经理（网络支撑经理）</text>
+          <view class="candidate-list">
+            <view class="candidate-tag" wx:if="{{form.networkManager}}">
+              <text>{{form.networkManager.name}}</text>
+              <text class="remove-tag" data-type="networkManager" data-idx="0" bindtap="onRemoveCandidate">×</text>
+            </view>
+            <view class="candidate-add" wx:if="{{!form.networkManager}}" data-type="networkManager" bindtap="onPickCandidate">+ 选择</view>
+          </view>
+        </view>
+      </scroll-view>
+      <view class="modal-btns">
+        <button class="btn-default modal-btn" bindtap="onCloseModal">取消</button>
+        <button class="btn-primary modal-btn" bindtap="onSave" loading="{{saving}}">保存</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 选项选择弹窗（受理区域 / 网络支撑中心） -->
+  <view class="modal-mask" wx:if="{{showOptionPicker}}" bindtap="onCloseOptionPicker">
+    <view class="modal-box" catchtap>
+      <text class="modal-title">{{optionPickerTitle}}</text>
+      <scroll-view scroll-y style="max-height: 360rpx;">
+        <view
+          class="option-item"
+          wx:for="{{optionList}}"
+          wx:key="*this"
+          data-value="{{item}}"
+          bindtap="onSelectOption"
+        >{{item}}</view>
+        <view class="option-item option-item-add" bindtap="onShowManualInput">+ 手动输入新名称</view>
+      </scroll-view>
+      <view wx:if="{{showManualInput}}" class="manual-input-row">
+        <input class="form-input manual-input" placeholder="请输入新名称" bindinput="onManualInputChange" value="{{manualInputValue}}" />
+        <button class="btn-primary manual-confirm-btn" bindtap="onConfirmManualInput">确定</button>
+      </view>
+      <view class="modal-btns">
+        <button class="btn-default modal-btn" bindtap="onCloseOptionPicker">取消</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 人员选择弹窗 -->
+  <view class="modal-mask" wx:if="{{showPickModal}}" bindtap="onClosePickModal">
+    <view class="modal-box" catchtap>
+      <text class="modal-title">选择人员</text>
+      <view class="pick-list">
+        <view
+          class="pick-item {{selectedPickIds[item._id] ? 'pick-item-selected' : ''}}"
+          wx:for="{{pickCandidates}}"
+          wx:key="_id"
+          data-item="{{item}}"
+          bindtap="onTogglePick"
+        >
+          <text class="pick-name">{{item.name}}</text>
+          <text class="pick-phone">{{item.phone}}</text>
+          <text class="pick-check" wx:if="{{selectedPickIds[item._id]}}">✓</text>
+        </view>
+      </view>
+      <view class="modal-btns">
+        <button class="btn-default modal-btn" bindtap="onClosePickModal">取消</button>
+        <button class="btn-primary modal-btn" bindtap="onConfirmPick">确认</button>
+      </view>
+    </view>
+  </view>
+</view>

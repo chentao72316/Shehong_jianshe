@@ -1,0 +1,21 @@
+.filter-bar { display: flex; align-items: center; justify-content: space-between; }
+
+.filter-label { font-size: 28rpx; color: #595959; }
+
+.filter-value { font-size: 28rpx; color: #1E6F3F; }
+
+.stats-table { width: 100%; }
+
+.table-header { display: flex; padding: 16rpx 0; border-bottom: 2rpx solid #E8E8E8; }
+
+.table-row { display: flex; padding: 16rpx 0; border-bottom: 1rpx solid #F5F5F5; }
+
+.table-row:last-child { border-bottom: none; }
+
+.th { flex: 1; font-size: 22rpx; color: #8C8C8C; text-align: center; }
+
+.td { flex: 1; font-size: 26rpx; color: #262626; text-align: center; }
+
+.empty-state { display: flex; align-items: center; justify-content: center; padding: 120rpx 0; }
+
+.empty-text { font-size: 28rpx; color: #BFBFBF; }

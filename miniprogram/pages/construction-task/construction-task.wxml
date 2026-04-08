@@ -1,0 +1,27 @@
+<view class="page-container">
+  <!-- 筛选栏 -->
+  <view class="filter-bar">
+    <radio-group bindchange="onFilterChange">
+      <label wx:for="{{filterOptions}}" wx:key="value" class="stage-tab {{filterStatus === item.value ? 'active' : ''}}">
+        <radio value="{{item.value}}" checked="{{filterStatus === item.value}}" />
+        <text>{{item.label}}</text>
+      </label>
+    </radio-group>
+  </view>
+
+  <view class="list-wrap" wx:if="{{tasks.length > 0}}">
+    <demand-card
+      wx:for="{{tasks}}"
+      wx:key="id"
+      demand="{{item}}"
+      bindtap="onTapTask"
+    />
+  </view>
+
+  <view class="empty-state" wx:elif="{{!loading}}">
+    <text class="empty-text">暂无施工任务</text>
+  </view>
+
+  <view class="load-more" wx:if="{{loading}}"><text>加载中...</text></view>
+  <view class="load-more" wx:elif="{{!hasMore && tasks.length > 0}}"><text>已加载全部</text></view>
+</view>

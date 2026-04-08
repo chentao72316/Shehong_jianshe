@@ -1,0 +1,27 @@
+.form-item { margin-bottom: 28rpx; }
+
+.form-label { display: block; font-size: 26rpx; color: #595959; margin-bottom: 10rpx; }
+
+.form-label.required::before { content: '* '; color: #F5222D; }
+
+.form-input { width: 100%; height: 80rpx; border: 1rpx solid #E8E8E8; border-radius: 8rpx; padding: 0 20rpx; font-size: 28rpx; color: #262626; background: #FAFAFA; box-sizing: border-box; }
+
+.form-textarea { width: 100%; height: 160rpx; border: 1rpx solid #E8E8E8; border-radius: 8rpx; padding: 16rpx 20rpx; font-size: 28rpx; color: #262626; background: #FAFAFA; box-sizing: border-box; }
+
+.picker-value { height: 80rpx; border: 1rpx solid #E8E8E8; border-radius: 8rpx; padding: 0 20rpx; font-size: 28rpx; color: #262626; background: #FAFAFA; display: flex; align-items: center; }
+
+.placeholder { color: #BFBFBF; }
+
+.location-selector { height: 80rpx; border: 1rpx solid #E8E8E8; border-radius: 8rpx; padding: 0 20rpx; font-size: 28rpx; background: #FAFAFA; display: flex; align-items: center; }
+
+.photo-grid { display: flex; flex-wrap: wrap; gap: 12rpx; }
+
+.photo-thumb { width: 160rpx; height: 160rpx; border-radius: 8rpx; border: 1rpx solid #E8E8E8; }
+
+.photo-add { width: 160rpx; height: 160rpx; border: 2rpx dashed #BFBFBF; border-radius: 8rpx; display: flex; align-items: center; justify-content: center; font-size: 64rpx; color: #BFBFBF; }
+
+.error-tip { display: block; font-size: 22rpx; color: #F5222D; margin-top: 6rpx; }
+
+.submit-bar { position: fixed; bottom: 0; left: 0; right: 0; padding: 16rpx 32rpx; background: #fff; box-shadow: 0 -2rpx 8rpx rgba(0,0,0,0.08); }
+
+.submit-btn { width: 100%; height: 96rpx; line-height: 96rpx; border-radius: 48rpx; }

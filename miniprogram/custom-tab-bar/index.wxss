@@ -1,0 +1,93 @@
+.tab-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: stretch;
+  height: 112rpx;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: #ffffff;
+  border-top: 1rpx solid #e8e8e8;
+  box-shadow: 0 -2rpx 10rpx rgba(0, 0, 0, 0.06);
+  z-index: 100;
+  /* 为中央凸起按钮留出溢出空间 */
+  overflow: visible;
+}
+
+.tab-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6rpx;
+}
+
+.tab-icon {
+  width: 52rpx;
+  height: 52rpx;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.tab-text {
+  font-size: 24rpx;
+  font-weight: 600;
+  color: #8C8C8C;
+  line-height: 1;
+}
+
+.tab-item--active .tab-text {
+  color: #1E6F3F;
+}
+
+/* ── 中央「问问」凸起按钮 ──────────────────────── */
+
+/* 占位容器：与两侧 tab-item 等高，中央留出宽度 */
+.tab-center-wrap {
+  width: 120rpx;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding-bottom: 8rpx;
+  position: relative;
+}
+
+/* 凸起圆形按钮 */
+.tab-center-btn {
+  position: absolute;
+  bottom: 28rpx;   /* 从 tab-bar 底部向上偏移，凸出效果 */
+  width: 96rpx;
+  height: 96rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1E6F3F 0%, #2d9e58 100%);
+  box-shadow: 0 4rpx 20rpx rgba(30, 111, 63, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 防止被 tab-bar overflow:hidden 裁剪 */
+  z-index: 101;
+}
+
+/* 按钮内图标：SVG 气泡+问号 via background-image */
+.tab-center-icon {
+  width: 52rpx;
+  height: 52rpx;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='white'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z'/%3E%3C/svg%3E");
+}
+
+/* 按钮下方文字标签 */
+.tab-center-text {
+  font-size: 22rpx;
+  font-weight: 600;
+  color: #1E6F3F;
+  line-height: 1;
+  margin-top: 2rpx;
+}

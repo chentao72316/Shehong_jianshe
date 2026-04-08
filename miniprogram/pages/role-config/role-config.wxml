@@ -1,0 +1,53 @@
+<view class="page-container">
+  <view class="card tip-card">
+    <text class="tip-text">配置各角色的工单可见范围。修改后立即生效。</text>
+    <text class="tip-note">注：gridName 含"网络建设中心"的用户始终可见全部工单（不受此配置影响）。</text>
+  </view>
+
+  <view class="card" wx:if="{{list.length > 0}}">
+    <view class="role-row header-row">
+      <text class="col-role">角色</text>
+      <text class="col-scope">可见范围</text>
+      <text class="col-action">操作</text>
+    </view>
+    <view class="role-row" wx:for="{{list}}" wx:key="role">
+      <view class="col-role">
+        <text class="role-label">{{item.label}}</text>
+        <text class="role-desc">{{item.description}}</text>
+      </view>
+      <view class="col-scope">
+        <text class="scope-badge scope-{{item.visibilityScope}}">{{scopeLabels[item.visibilityScope]}}</text>
+      </view>
+      <view class="col-action">
+        <text class="action-link" data-item="{{item}}" bindtap="onEdit">修改</text>
+      </view>
+    </view>
+  </view>
+
+  <view class="loading-state" wx:if="{{loading}}">
+    <text>加载中...</text>
+  </view>
+
+  <!-- 编辑弹窗 -->
+  <view class="modal-mask" wx:if="{{showModal}}" bindtap="onCloseModal">
+    <view class="modal-box" catchtap>
+      <text class="modal-title">修改「{{editItem.label}}」可见范围</text>
+      <view class="scope-options">
+        <view
+          class="scope-option {{form.visibilityScope === item.value ? 'scope-option-active' : ''}}"
+          wx:for="{{scopeOptions}}"
+          wx:key="value"
+          data-value="{{item.value}}"
+          bindtap="onSelectScope"
+        >
+          <text class="scope-option-label">{{item.label}}</text>
+          <text class="scope-option-desc">{{item.desc}}</text>
+        </view>
+      </view>
+      <view class="modal-btns">
+        <button class="btn-default modal-btn" bindtap="onCloseModal">取消</button>
+        <button class="btn-primary modal-btn" bindtap="onSave" loading="{{saving}}">保存</button>
+      </view>
+    </view>
+  </view>
+</view>

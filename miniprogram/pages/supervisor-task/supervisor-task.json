@@ -1,0 +1,7 @@
+{
+  "navigationBarTitleText": "监理任务",
+  "enablePullDownRefresh": true,
+  "usingComponents": {
+    "demand-card": "../../components/demand-card/demand-card"
+  }
+}

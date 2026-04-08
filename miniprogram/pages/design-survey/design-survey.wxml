@@ -1,0 +1,92 @@
+<view class="page-container">
+  <!-- 需求信息摘要 -->
+  <view class="card" wx:if="{{demand}}">
+    <text class="section-title">需求信息</text>
+    <text class="text-secondary">{{demand.demandNo}} | {{demand.type}} | {{demand.acceptArea}}</text>
+    <text class="text-secondary mt-16">{{demand.locationDetail}}</text>
+  </view>
+
+  <!-- 查勘表单 -->
+  <view class="card">
+    <text class="section-title">查勘填报</text>
+
+    <!-- 300M内是否有资源 -->
+    <view class="form-item">
+      <text class="form-label required">300M内是否有资源</text>
+      <radio-group bindchange="onResourceChange">
+        <label class="radio-item">
+          <radio value="0" checked="{{form.hasResource === true}}" color="#1E6F3F" />
+          <text>有</text>
+        </label>
+        <label class="radio-item">
+          <radio value="1" checked="{{form.hasResource === false}}" color="#1E6F3F" />
+          <text>无</text>
+        </label>
+      </radio-group>
+      <text class="error-tip" wx:if="{{errors.hasResource}}">{{errors.hasResource}}</text>
+    </view>
+
+    <!-- 有资源时的字段 -->
+    <block wx:if="{{form.hasResource === true}}">
+      <view class="form-item">
+        <text class="form-label required">现有资源名称</text>
+        <input class="form-input" placeholder="请填写现有资源名称" data-field="resourceName" bindinput="onInputChange" value="{{form.resourceName}}" />
+        <text class="error-tip" wx:if="{{errors.resourceName}}">{{errors.resourceName}}</text>
+      </view>
+    </block>
+
+    <!-- 无资源时的字段 -->
+    <block wx:if="{{form.hasResource === false}}">
+      <view class="form-item">
+        <text class="form-label">设计图发送照片</text>
+        <view class="photo-grid">
+          <view wx:for="{{form.resourcePhotos}}" wx:key="index" class="photo-item">
+            <image src="{{item}}" class="photo-thumb" mode="aspectFill" data-index="{{index}}" bindtap="onPreviewResourcePhoto" />
+            <view class="photo-delete" data-index="{{index}}" bindtap="onDeleteResourcePhoto">×</view>
+          </view>
+          <view class="photo-add" bindtap="onUploadResourcePhotos" wx:if="{{form.resourcePhotos.length < 3}}">
+            <text>+</text>
+          </view>
+        </view>
+      </view>
+
+      <view class="form-item">
+        <text class="form-label required">设计图纸</text>
+        <view class="photo-grid">
+          <view wx:for="{{form.designFiles}}" wx:key="index" class="photo-item">
+            <!-- 图片类型：显示缩略图 -->
+            <!-- 判断条件：designFileTypes[index] 存在 且 type 为 'image' -->
+            <block wx:if="{{designFileTypes[index] && designFileTypes[index].type === 'image'}}">
+              <image src="{{item}}" class="photo-thumb" mode="aspectFill" data-index="{{index}}" bindtap="onPreviewDesignFile" />
+            </block>
+            <!-- 非图片类型：显示文件类型图标 -->
+            <block wx:else>
+              <view class="file-icon-box" data-index="{{index}}" bindtap="onPreviewDesignFile">
+                <text class="file-icon-text">{{designFileTypes[index] ? designFileTypes[index].icon : 'FILE'}}</text>
+                <text class="file-icon-label">{{designFileTypes[index] ? designFileTypes[index].label : '附件'}}</text>
+              </view>
+            </block>
+            <view class="photo-delete" data-index="{{index}}" bindtap="onDeleteDesignFile">×</view>
+          </view>
+          <view class="photo-add" bindtap="onUploadDesignFile" wx:if="{{form.designFiles.length < 3}}">
+            <text>+</text>
+          </view>
+        </view>
+        <text class="error-tip" wx:if="{{errors.designFiles}}">{{errors.designFiles}}</text>
+      </view>
+    </block>
+
+    <!-- 备注（非必填） -->
+    <view class="form-item">
+      <text class="form-label">备注</text>
+      <textarea class="form-textarea" placeholder="选填，请填写查勘备注" data-field="remark" bindinput="onInputChange" value="{{form.remark}}" />
+    </view>
+  </view>
+
+  <!-- 提交 -->
+  <view class="submit-bar">
+    <button class="btn-primary submit-btn" bindtap="onSubmit" loading="{{submitting}}">
+      提交查勘结果
+    </button>
+  </view>
+</view>

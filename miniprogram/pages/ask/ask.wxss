@@ -1,0 +1,202 @@
+.ask-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: #F5F5F5;
+  box-sizing: border-box;
+}
+
+/* ── 消息列表 ─────────────────────────────── */
+
+.msg-list {
+  flex: 1;
+  overflow: hidden;
+}
+
+.msg-list-inner {
+  padding: 20rpx 24rpx 24rpx;
+}
+
+/* 消息行 */
+.msg-row {
+  display: flex;
+  align-items: flex-start;
+  margin-bottom: 24rpx;
+}
+
+.msg-row--user {
+  flex-direction: row-reverse;
+}
+
+/* 头像 */
+.msg-avatar {
+  width: 68rpx;
+  height: 68rpx;
+  border-radius: 50%;
+  background: #e8f5e9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 36rpx;
+  flex-shrink: 0;
+  margin-right: 16rpx;
+}
+
+.msg-row--user .msg-avatar {
+  margin-right: 0;
+  margin-left: 16rpx;
+}
+
+/* 气泡 */
+.msg-bubble {
+  max-width: 68%;
+  padding: 20rpx 24rpx;
+  border-radius: 16rpx;
+  position: relative;
+  word-break: break-all;
+}
+
+.msg-bubble--ai {
+  background: #ffffff;
+  box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.08);
+  border-top-left-radius: 4rpx;
+}
+
+.msg-bubble--user {
+  background: #1E6F3F;
+  border-top-right-radius: 4rpx;
+  margin-left: auto;
+}
+
+.msg-text {
+  font-size: 28rpx;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.msg-bubble--ai .msg-text {
+  color: #333333;
+}
+
+.msg-bubble--user .msg-text {
+  color: #ffffff;
+}
+
+/* ── 加载动画 ─────────────────────────────── */
+
+.loading-dots {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  padding: 4rpx 0;
+}
+
+.dot {
+  width: 14rpx;
+  height: 14rpx;
+  border-radius: 50%;
+  background: #aaa;
+  animation: dot-bounce 1.2s infinite ease-in-out;
+}
+
+.dot:nth-child(1) { animation-delay: 0s; }
+.dot:nth-child(2) { animation-delay: 0.2s; }
+.dot:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: scale(0.7); opacity: 0.5; }
+  40% { transform: scale(1.1); opacity: 1; }
+}
+
+/* ── 快捷提问 ─────────────────────────────── */
+
+.quick-section {
+  margin: 8rpx 0 32rpx;
+}
+
+.quick-title {
+  font-size: 24rpx;
+  color: #999;
+  margin-bottom: 16rpx;
+}
+
+.quick-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.quick-tag {
+  background: #ffffff;
+  border: 1rpx solid #d4e9d8;
+  color: #1E6F3F;
+  font-size: 26rpx;
+  padding: 12rpx 20rpx;
+  border-radius: 32rpx;
+  line-height: 1.4;
+}
+
+.quick-tag:active {
+  background: #e8f5e9;
+}
+
+/* ── 底部输入栏 ───────────────────────────── */
+
+.input-bar {
+  background: #ffffff;
+  border-top: 1rpx solid #eeeeee;
+  padding: 16rpx 20rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  flex-shrink: 0;
+}
+
+.new-chat-btn {
+  flex-shrink: 0;
+  font-size: 24rpx;
+  color: #666;
+  background: #f5f5f5;
+  padding: 12rpx 18rpx;
+  border-radius: 32rpx;
+  border: 1rpx solid #e0e0e0;
+  white-space: nowrap;
+}
+
+.new-chat-btn:active {
+  background: #eeeeee;
+}
+
+.input-field {
+  flex: 1;
+  background: #f7f7f7;
+  border-radius: 40rpx;
+  padding: 14rpx 24rpx;
+  font-size: 28rpx;
+  color: #333;
+  height: 72rpx;
+  line-height: 44rpx;
+}
+
+.input-placeholder {
+  color: #bbb;
+}
+
+.send-btn {
+  flex-shrink: 0;
+  font-size: 26rpx;
+  color: #fff;
+  background: #c8c8c8;
+  padding: 14rpx 24rpx;
+  border-radius: 40rpx;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.send-btn--active {
+  background: #1E6F3F;
+}
+
+.send-btn:active {
+  opacity: 0.85;
+}

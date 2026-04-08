@@ -1,0 +1,42 @@
+<view class="demand-card" catchtap="onTap" data-id="{{demand.id}}">
+
+  <!-- 右上角对角线状态丝带 -->
+  <view class="ribbon" style="background:{{ribbonColor}};color:{{ribbonTextColor}}">{{ribbonLabel}}</view>
+
+  <!-- 工单编号 -->
+  <view class="card-no-row">
+    <text class="demand-no">{{demand.demandNo}}</text>
+  </view>
+
+  <!-- 区域 + 姓名电话 -->
+  <view class="area-row">
+    <text class="area-pin">📍</text>
+    <text class="area-text">{{demand.acceptArea}}</text>
+    <text class="info-text" wx:if="{{demand.submitter}}">👤 {{demand.submitter}}</text>
+  </view>
+
+  <!-- 标签行 + 地址：业务 + 类型 + 紧急程度 + 地址 -->
+  <view class="tag-row">
+    <text class="tag tag-biz">{{demand.businessType}}</text>
+    <text class="tag tag-type">{{demand.type}}</text>
+    <text wx:if="{{demand.urgency === '特急'}}" class="tag tag-critical">特急</text>
+    <text wx:elif="{{demand.urgency === '紧急'}}" class="tag tag-urgent">紧急</text>
+    <text class="info-text info-location" wx:if="{{demand.location}}" user-select="false">{{demand.location}}</text>
+  </view>
+
+  <view class="divider"></view>
+
+  <!-- 底部：时间 | 剩余/超时天数 + 箭头 -->
+  <view class="card-footer">
+    <view class="footer-left">
+      <text class="clock">🕐</text>
+      <text class="created-at">{{demand.createdAt}}</text>
+    </view>
+    <view class="footer-right">
+      <text wx:if="{{demand.remainingDays != null && demand.remainingDays >= 0}}" class="days-ok">剩余{{demand.remainingDays}}天</text>
+      <text wx:elif="{{demand.remainingDays != null}}" class="days-over">超时{{-demand.remainingDays}}天</text>
+      <text class="arrow">›</text>
+    </view>
+  </view>
+
+</view>

@@ -1,0 +1,89 @@
+<view class="page-container">
+  <!-- 用户信息卡 -->
+  <view class="user-card">
+    <view class="avatar">{{userInfo.name ? userInfo.name[0] : '?'}}</view>
+    <view class="user-info">
+      <text class="user-name">{{userInfo.name}}</text>
+      <text class="user-phone text-secondary">{{userInfo.phone}}</text>
+    </view>
+    <view class="role-tag">{{currentRoleLabel}}</view>
+  </view>
+
+  <!-- 操作菜单 -->
+  <view class="card menu-card">
+    <view class="menu-item" bindtap="onSwitchRole">
+      <text class="menu-label">切换角色</text>
+      <text class="menu-value text-secondary">{{currentRoleLabel}}</text>
+      <text class="arrow">›</text>
+    </view>
+    <view class="menu-item" bindtap="onChangePassword">
+      <text class="menu-label">修改密码</text>
+      <text class="arrow">›</text>
+    </view>
+    <view class="menu-item" data-url="/pages/demand-list/demand-list" bindtap="onNavTo">
+      <text class="menu-label">我的需求</text>
+      <text class="arrow">›</text>
+    </view>
+  </view>
+
+  <!-- 退出登录 -->
+  <view class="logout-area">
+    <button class="btn-danger logout-btn" bindtap="onLogout">退出登录</button>
+  </view>
+
+  <!-- 修改密码弹窗 -->
+  <view class="mask" wx:if="{{showPasswordModal}}" bindtap="onCancelPassword"></view>
+  <view class="password-modal" wx:if="{{showPasswordModal}}">
+    <view class="modal-title">{{isFirstLogin ? '设置登录密码' : '修改密码'}}</view>
+    <view class="input-group">
+      <view class="input-row">
+        <text class="input-label">{{isFirstLogin ? '当前密码' : '原密码'}}</text>
+        <input
+          class="input-field"
+          type="password"
+          placeholder="{{isFirstLogin ? '请输入当前密码' : '请输入原密码'}}"
+          bindinput="onOldPasswordInput"
+          value="{{oldPassword}}"
+        />
+      </view>
+      <view class="input-row">
+        <text class="input-label">{{isFirstLogin ? '设置密码' : '新密码'}}</text>
+        <input
+          class="input-field"
+          type="password"
+          placeholder="8位以上，含大小写字母和数字"
+          bindinput="onNewPasswordInput"
+          value="{{newPassword}}"
+        />
+      </view>
+      <view class="input-row">
+        <text class="input-label">确认密码</text>
+        <input
+          class="input-field"
+          type="password"
+          placeholder="请再次输入新密码"
+          bindinput="onConfirmPasswordInput"
+          value="{{confirmPassword}}"
+        />
+      </view>
+    </view>
+    <view class="modal-tip" wx:if="{{isFirstLogin}}">首次登录需要设置密码，密码需包含大小写字母和数字</view>
+    <view class="modal-btn-group">
+      <button
+        class="btn-confirm"
+        bindtap="onConfirmPassword"
+        loading="{{loading}}"
+        disabled="{{loading}}"
+      >
+        确认
+      </button>
+      <button
+        class="btn-cancel"
+        bindtap="onCancelPassword"
+        wx:if="{{!isFirstLogin}}"
+      >
+        取消
+      </button>
+    </view>
+  </view>
+</view>

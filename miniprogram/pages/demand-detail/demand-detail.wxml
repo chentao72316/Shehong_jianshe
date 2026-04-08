@@ -1,0 +1,344 @@
+<view class="page-container" wx:if="{{!loading && demand}}">
+  <!-- 头部状态 -->
+  <view class="card detail-header">
+    <view class="flex-between">
+      <text class="demand-no">{{demand.demandNo}}</text>
+      <status-badge status="{{demand.status}}" />
+    </view>
+    <!-- 步骤条组件 -->
+    <view class="steps-wrap mt-16">
+      <view class="steps">
+        <block wx:for="{{demandSteps}}" wx:key="key">
+          <view class="step-item {{item.key}} {{item.current ? 'current' : ''}} {{item.done ? 'done' : ''}}">
+            <view class="step-dot"></view>
+            <view class="step-line" wx:if="{{index < demandSteps.length - 1}}"></view>
+            <text class="step-label">{{item.label}}</text>
+          </view>
+        </block>
+      </view>
+    </view>
+    <view class="flex-between mt-16">
+      <text class="text-secondary">整体进度 {{progress}}%</text>
+      <text wx:if="{{remainingDays !== null}}" class="{{remainingDays >= 0 ? 'text-success' : 'text-danger'}}">
+        {{remainingDays >= 0 ? '剩余' + remainingDays + '天' : '已超时' + (-remainingDays) + '天'}}
+      </text>
+    </view>
+  </view>
+
+  <!-- 基本信息 -->
+  <view class="card">
+    <text class="section-title">基本信息</text>
+    <view class="info-grid">
+      <view class="info-row-item">
+        <text class="info-key">受理区域</text>
+        <text class="info-val">{{demand.acceptArea}}</text>
+      </view>
+      <view class="info-row-item">
+        <text class="info-key">部门/网格</text>
+        <text class="info-val">{{demand.serviceCenter || '-'}}</text>
+      </view>
+      <view class="info-row-item">
+        <text class="info-key">网络支撑中心</text>
+        <text class="info-val">{{demand.networkSupport || '-'}}</text>
+      </view>
+      <view class="info-row-item">
+        <text class="info-key">提交人</text>
+        <text class="info-val">{{demand.createdBy.name || '-'}}</text>
+      </view>
+      <view class="info-row-item">
+        <text class="info-key">提交电话</text>
+        <text class="info-val">{{demand.submitterPhone || '-'}}</text>
+      </view>
+      <view class="info-row-item">
+        <text class="info-key">业务类型</text>
+        <text class="info-val">{{demand.businessType || '-'}}</text>
+      </view>
+      <view class="info-row-item">
+        <text class="info-key">需求类型</text>
+        <text class="info-val">{{demand.type}}</text>
+      </view>
+      <view class="info-row-item">
+        <text class="info-key">紧急程度</text>
+        <text class="info-val">{{demand.urgency}}</text>
+      </view>
+      <view class="info-row-item">
+        <text class="info-key">已预约客户数</text>
+        <text class="info-val">{{demand.reservedCustomers}}</text>
+      </view>
+      <view class="info-row-item">
+        <text class="info-key">拟建DP箱个数</text>
+        <text class="info-val">{{demand.dpBoxCount}}</text>
+      </view>
+      <view class="info-row-item">
+        <text class="info-key">需求人</text>
+        <text class="info-val">{{demand.demandPersonName}} {{demand.demandPersonPhone}}</text>
+      </view>
+      <view class="info-row-item" wx:if="{{demand.latitude && demand.longitude}}">
+        <text class="info-key">经纬度</text>
+        <text class="info-val">{{demand.latitude}}, {{demand.longitude}}</text>
+      </view>
+    </view>
+    <view class="info-row-item">
+      <text class="info-key">位置描述</text>
+      <text class="info-val">{{demand.locationDetail}}</text>
+    </view>
+    <!-- 备注 -->
+    <view class="info-row-item" wx:if="{{demand.remark}}">
+      <text class="info-key">备注</text>
+      <text class="info-val info-val-remark">{{demand.remark}}</text>
+    </view>
+    <!-- 附件（有附件时显示） -->
+    <view class="photo-section" wx:if="{{demand.photos && demand.photos.length > 0}}">
+      <text class="info-key">附件</text>
+      <view class="photo-grid">
+        <block wx:for="{{demand.photos}}" wx:key="index">
+          <image
+            wx:if="{{item.type === 'image'}}"
+            src="{{item.url}}"
+            class="photo-thumb"
+            mode="aspectFill"
+            data-urls="{{demand.photos}}"
+            data-index="{{index}}"
+            bindtap="onPreviewPhoto"
+          />
+          <view wx:else class="file-item" data-url="{{item.url}}" bindtap="onPreviewFile">
+            <text class="file-icon">📄</text>
+            <text class="file-name">{{item.name}}</text>
+          </view>
+        </block>
+      </view>
+    </view>
+  </view>
+
+  <!-- 设计查勘结果 -->
+  <view class="card" wx:if="{{designSubmitted}}">
+    <text class="section-title">设计查勘结果</text>
+    <view class="info-grid">
+      <view class="info-row-item">
+        <text class="info-key">资源情况</text>
+        <text class="info-val {{demand.hasResource ? 'text-success' : 'text-info'}}">
+          {{demand.hasResource ? '有现有资源' : '需新建'}}
+        </text>
+      </view>
+      <view class="info-row-item" wx:if="{{demand.hasResource && demand.resourceName}}">
+        <text class="info-key">现有资源名称</text>
+        <text class="info-val">{{demand.resourceName}}</text>
+      </view>
+    </view>
+    <!-- 资源照片（有资源时） -->
+    <view class="photo-section" wx:if="{{demand.hasResource && demand.resourcePhotos && demand.resourcePhotos.length > 0}}">
+      <text class="info-key">资源照片</text>
+      <view class="photo-grid">
+        <block wx:for="{{demand.resourcePhotos}}" wx:key="index">
+          <image
+            src="{{item.url}}"
+            class="photo-thumb"
+            mode="aspectFill"
+            data-urls="{{demand.resourcePhotos}}"
+            data-index="{{index}}"
+            bindtap="onPreviewPhoto"
+          />
+        </block>
+      </view>
+    </view>
+    <!-- 设计图纸（无资源时） -->
+    <view class="photo-section" wx:if="{{!demand.hasResource && demand.designFiles && demand.designFiles.length > 0}}">
+      <text class="info-key">设计图纸</text>
+      <view class="photo-grid">
+        <block wx:for="{{demand.designFiles}}" wx:key="index">
+          <image
+            wx:if="{{item.type === 'image'}}"
+            src="{{item.url}}"
+            class="photo-thumb"
+            mode="aspectFill"
+            data-urls="{{demand.designFiles}}"
+            data-index="{{index}}"
+            bindtap="onPreviewPhoto"
+          />
+          <view wx:else class="file-item" data-url="{{item.url}}" bindtap="onPreviewFile">
+            <text class="file-icon">📄</text>
+            <text class="file-name">{{item.name}}</text>
+          </view>
+        </block>
+      </view>
+    </view>
+    <view class="info-row-item" wx:if="{{demand.designRemark}}">
+      <text class="info-key">设计备注</text>
+      <text class="info-val info-val-remark">{{demand.designRemark}}</text>
+    </view>
+  </view>
+
+  <!-- 施工完成信息 -->
+  <view class="card" wx:if="{{constructionSubmitted}}">
+    <text class="section-title">施工完成信息</text>
+    <view class="info-grid">
+      <view class="info-row-item" wx:if="{{demand.coverageName}}">
+        <text class="info-key">覆盖点名称</text>
+        <text class="info-val">{{demand.coverageName}}</text>
+      </view>
+      <view class="info-row-item" wx:if="{{demand.assetStatus}}">
+        <text class="info-key">资产状态</text>
+        <text class="info-val">{{demand.assetStatus}}</text>
+      </view>
+      <view class="info-row-item" wx:if="{{demand.constructionLat && demand.constructionLng}}">
+        <text class="info-key">施工位置</text>
+        <text class="info-val">{{demand.constructionLat}}, {{demand.constructionLng}}</text>
+      </view>
+    </view>
+    <!-- 施工照片 -->
+    <view class="photo-section" wx:if="{{demand.constructionPhotos && demand.constructionPhotos.length > 0}}">
+      <text class="info-key">施工照片</text>
+      <view class="photo-grid">
+        <block wx:for="{{demand.constructionPhotos}}" wx:key="index">
+          <image
+            src="{{item.url}}"
+            class="photo-thumb"
+            mode="aspectFill"
+            data-urls="{{demand.constructionPhotos}}"
+            data-index="{{index}}"
+            bindtap="onPreviewPhoto"
+          />
+        </block>
+      </view>
+    </view>
+    <view class="info-row-item" wx:if="{{demand.constructionRemark}}">
+      <text class="info-key">施工备注</text>
+      <text class="info-val info-val-remark">{{demand.constructionRemark}}</text>
+    </view>
+  </view>
+
+  <!-- 操作按钮（根据角色和状态显示） -->
+  <view class="card action-card">
+    <!-- 网格经理：待审核跨区域工单可审核
+         条件：网格经理 + 状态待审核 + 当前用户所在网格与工单提交人网格一致
+         （比直接比对 crossAreaReviewerId 更健壮，避免审核人为空时无人能操作） -->
+    <block wx:if="{{currentRole === 'GRID_MANAGER' && demand.status === '待审核' && userGridName && userGridName === demand.gridName}}">
+      <button class="btn-primary action-btn" bindtap="onApproveCrossArea">
+        审核通过
+      </button>
+      <button class="btn-danger action-btn mt-16" bindtap="onOpenCrossAreaReject">
+        退回驳回
+      </button>
+    </block>
+    <!-- 网格经理/网络支撑经理：待审核状态可指派（跨区审核场景下网格经理不显示此按钮） -->
+    <button class="btn-primary action-btn" wx:if="{{((currentRole === 'GRID_MANAGER' && !(userGridName && userGridName === demand.gridName)) || currentRole === 'NETWORK_MANAGER') && demand.status === '待审核'}}" bindtap="onAssign">
+      指派设计单位
+    </button>
+    <!-- 设计单位：设计中可进行查勘 -->
+    <button class="btn-primary action-btn" wx:if="{{currentRole === 'DESIGN' && demand.status === '设计中'}}" bindtap="onGoDesignSurvey">
+      填写查勘结果
+    </button>
+    <!-- 施工单位：施工中可提交竣工 -->
+    <button class="btn-primary action-btn" wx:if="{{currentRole === 'CONSTRUCTION' && demand.status === '施工中'}}" bindtap="onGoConstructionSubmit">
+      提交竣工资料
+    </button>
+    <!-- 一线人员：已驳回可重新提交 / 查看驳回原因 / 确认驳回 -->
+    <button class="btn-primary action-btn" wx:if="{{currentRole === 'FRONTLINE' && demand.status === '已驳回'}}" bindtap="onResubmit">
+      重新提交
+    </button>
+    <!-- 有资源驳回无需查看原因（原因即"有资源"），其他驳回显示原因 -->
+    <button class="btn-default action-btn mt-16" wx:if="{{currentRole === 'FRONTLINE' && demand.status === '已驳回' && demand.rejectType !== '有资源'}}" bindtap="onViewRejection">
+      查看驳回原因
+    </button>
+    <button class="btn-danger action-btn mt-16" wx:if="{{currentRole === 'FRONTLINE' && demand.status === '已驳回' && !demand.rejectionAcknowledged}}" bindtap="onConfirmReject">
+      确认驳回
+    </button>
+    <!-- 网格经理：设计阶段可驳回需求 -->
+    <button class="btn-danger action-btn" wx:if="{{currentRole === 'GRID_MANAGER' && demand.status === '设计中'}}" bindtap="onRejectDemand">
+      驳回需求
+    </button>
+    <!-- 网络支撑经理：待确认状态可确认开通 -->
+    <block wx:if="{{currentRole === 'NETWORK_MANAGER' && demand.status === '待确认'}}">
+      <button class="btn-primary action-btn" bindtap="onConfirmDemand">
+        确认开通
+      </button>
+      <button class="btn-danger action-btn mt-16" bindtap="onRejectConstruction">
+        驳回施工
+      </button>
+    </block>
+    <!-- 管理员：强制修改状态 -->
+    <button class="btn-warning action-btn mt-16" wx:if="{{currentRole === 'ADMIN'}}" bindtap="onOpenForceStatus">
+      强制修改状态
+    </button>
+  </view>
+
+  <!-- 流程时间线 -->
+  <view class="card">
+    <text class="section-title">流程记录</text>
+    <timeline events="{{timeline}}" />
+  </view>
+
+  <!-- 备注弹窗 -->
+  <view class="modal-mask" wx:if="{{showRemarkModal}}" bindtap="onCloseModal">
+    <view class="modal-box" catchtap>
+      <text class="modal-title">添加备注</text>
+      <textarea class="remark-input" placeholder="请输入备注内容" bindinput="onRemarkInput" value="{{remarkText}}" />
+      <view class="modal-btns">
+        <button class="btn-default modal-btn" bindtap="onCloseModal">取消</button>
+        <button class="btn-primary modal-btn" bindtap="onSubmitRemark">确认</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 驳回弹窗（设计） -->
+  <view class="modal-mask" wx:if="{{showRejectModal}}" bindtap="onCloseModal">
+    <view class="modal-box" catchtap>
+      <text class="modal-title">驳回需求</text>
+      <textarea class="remark-input" placeholder="请输入驳回原因（必填）" bindinput="onRejectReasonInput" value="{{rejectReason}}" />
+      <view class="modal-btns">
+        <button class="btn-default modal-btn" bindtap="onCloseModal">取消</button>
+        <button class="btn-danger modal-btn" bindtap="onSubmitReject">确认驳回</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 驳回施工弹窗 -->
+  <view class="modal-mask" wx:if="{{showRejectConstructionModal}}" bindtap="onCloseModal">
+    <view class="modal-box" catchtap>
+      <text class="modal-title">驳回施工</text>
+      <textarea class="remark-input" placeholder="请输入驳回原因（必填）" bindinput="onRejectConstructionReasonInput" value="{{rejectConstructionReason}}" />
+      <view class="modal-btns">
+        <button class="btn-default modal-btn" bindtap="onCloseModal">取消</button>
+        <button class="btn-danger modal-btn" bindtap="onSubmitRejectConstruction">确认驳回</button>
+      </view>
+    </view>
+  </view>
+
+  <!-- 强制修改状态弹窗（管理员） -->
+  <view class="modal-mask" wx:if="{{showForceStatusModal}}" bindtap="onCloseModal">
+    <view class="modal-box" catchtap>
+      <text class="modal-title">强制修改状态</text>
+      <view class="form-item">
+        <text class="form-label">目标状态</text>
+        <picker mode="selector" range="{{forceStatusOptions}}" bindchange="onForceStatusChange">
+          <view class="picker-value {{forceStatusTarget ? '' : 'placeholder'}}">
+            {{forceStatusTarget || '请选择目标状态'}}
+          </view>
+        </picker>
+      </view>
+      <view class="form-item mt-16">
+        <text class="form-label">操作原因（必填）</text>
+        <textarea class="remark-input" placeholder="请输入操作原因" bindinput="onForceReasonInput" value="{{forceStatusReason}}" />
+      </view>
+      <view class="modal-btns">
+        <button class="btn-default modal-btn" bindtap="onCloseModal">取消</button>
+        <button class="btn-warning modal-btn" bindtap="onSubmitForceStatus">确认修改</button>
+      </view>
+    </view>
+  </view>
+  <!-- 跨区域审核驳回弹窗 -->
+  <view class="modal-mask" wx:if="{{showCrossAreaRejectModal}}" bindtap="onCloseModal">
+    <view class="modal-box" catchtap>
+      <text class="modal-title">退回驳回</text>
+      <textarea class="remark-input" placeholder="请输入驳回原因（必填）" bindinput="onCrossAreaRejectNoteInput" value="{{crossAreaRejectNote}}" />
+      <view class="modal-btns">
+        <button class="btn-default modal-btn" bindtap="onCloseModal">取消</button>
+        <button class="btn-danger modal-btn" bindtap="onSubmitCrossAreaReject">确认驳回</button>
+      </view>
+    </view>
+  </view>
+</view>
+
+<view class="loading-state" wx:elif="{{loading}}">
+  <text>加载中...</text>
+</view>

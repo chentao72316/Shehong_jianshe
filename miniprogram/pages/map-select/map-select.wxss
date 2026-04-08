@@ -1,0 +1,34 @@
+.map-page {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+.map {
+  flex: 1;
+  width: 100%;
+}
+
+.confirm-bar {
+  background: #fff;
+  padding: 16rpx 32rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 -2rpx 8rpx rgba(0,0,0,0.08);
+}
+
+.location-text {
+  font-size: 24rpx;
+  color: #595959;
+  flex: 1;
+  margin-right: 16rpx;
+}
+
+.confirm-btn {
+  width: 200rpx;
+  height: 72rpx;
+  line-height: 72rpx;
+  border-radius: 36rpx;
+  font-size: 28rpx;
+}

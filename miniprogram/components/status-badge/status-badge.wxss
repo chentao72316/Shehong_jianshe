@@ -1,0 +1,9 @@
+.status-badge {
+  display: inline-block;
+  padding: 4rpx 16rpx;
+  border-radius: 8rpx;
+  font-size: 22rpx;
+  border: 1rpx solid;
+  line-height: 1.6;
+  white-space: nowrap;
+}

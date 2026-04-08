@@ -1,0 +1,84 @@
+<view class="ask-page">
+  <!-- 消息列表 -->
+  <scroll-view
+    class="msg-list"
+    scroll-y
+    scroll-into-view="{{scrollTarget}}"
+    scroll-with-animation
+    enhanced
+    bounces
+  >
+    <view class="msg-list-inner">
+
+      <!-- 欢迎气泡（仅首次展示） -->
+      <view wx:if="{{showWelcome}}" class="msg-row msg-row--ai">
+        <view class="msg-avatar">🤖</view>
+        <view class="msg-bubble msg-bubble--ai">
+          <text class="msg-text">你好！我是射洪建设小助手\n\n可以帮您快速查询各区域的联系方式，包括网格经理、网络支撑经理、装维电话、设计/施工/监理的姓名和联系电话。\n\n请输入区域名称或服务中心名称开始查询～</text>
+        </view>
+      </view>
+
+      <!-- 快捷提问（无对话时展示） -->
+      <view wx:if="{{messages.length === 0}}" class="quick-section">
+        <view class="quick-title">快捷提问</view>
+        <view class="quick-grid">
+          <view
+            wx:for="{{quickQuestions}}"
+            wx:key="*this"
+            class="quick-tag"
+            data-text="{{item}}"
+            bindtap="onQuickTap"
+          >{{item}}</view>
+        </view>
+      </view>
+
+      <!-- 对话消息列表 -->
+      <view
+        wx:for="{{messages}}"
+        wx:key="id"
+        class="msg-row {{item.role === 'user' ? 'msg-row--user' : 'msg-row--ai'}}"
+      >
+        <!-- AI 消息 -->
+        <block wx:if="{{item.role === 'assistant'}}">
+          <view class="msg-avatar">🤖</view>
+          <view class="msg-bubble msg-bubble--ai {{item.loading ? 'msg-bubble--loading' : ''}}">
+            <view wx:if="{{item.loading}}" class="loading-dots">
+              <view class="dot"></view>
+              <view class="dot"></view>
+              <view class="dot"></view>
+            </view>
+            <text wx:else class="msg-text">{{item.content}}</text>
+          </view>
+        </block>
+
+        <!-- 用户消息 -->
+        <block wx:else>
+          <view class="msg-bubble msg-bubble--user">
+            <text class="msg-text">{{item.content}}</text>
+          </view>
+        </block>
+      </view>
+
+      <!-- 滚动锚点 -->
+      <view id="msg-bottom" style="height:20rpx;"></view>
+
+    </view>
+  </scroll-view>
+
+  <!-- 底部输入栏 -->
+  <view class="input-bar" style="padding-bottom: {{safeBottom}}px;">
+    <view class="new-chat-btn" bindtap="onNewChat">新对话</view>
+    <input
+      class="input-field"
+      type="text"
+      value="{{inputText}}"
+      placeholder="输入区域名称或关键词…"
+      placeholder-class="input-placeholder"
+      confirm-type="send"
+      adjust-position
+      bindinput="onInput"
+      bindconfirm="onSend"
+    />
+    <view class="send-btn {{inputText ? 'send-btn--active' : ''}}" bindtap="onSend">发送</view>
+  </view>
+</view>

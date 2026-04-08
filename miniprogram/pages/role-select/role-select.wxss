@@ -1,0 +1,43 @@
+.welcome-area {
+  padding: 48rpx 32rpx 32rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.welcome-text {
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #262626;
+}
+
+.welcome-tip {
+  font-size: 28rpx;
+  color: #8C8C8C;
+}
+
+.role-list {
+  padding: 0 16rpx;
+}
+
+.role-item {
+  background: #fff;
+  border-radius: 16rpx;
+  padding: 32rpx 24rpx;
+  margin-bottom: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 2rpx 8rpx rgba(0,0,0,0.06);
+}
+
+.role-label {
+  font-size: 32rpx;
+  color: #262626;
+  font-weight: 500;
+}
+
+.arrow {
+  font-size: 40rpx;
+  color: #BFBFBF;
+}

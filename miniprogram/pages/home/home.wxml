@@ -1,0 +1,88 @@
+<view class="page-container">
+  <!-- 顶部欢迎区 -->
+  <view class="header-banner">
+    <view class="header-info">
+      <text class="greeting">你好，{{userInfo.name}}</text>
+      <text class="role-tag">{{roleTag}}</text>
+    </view>
+    <text class="header-date">射洪N/W支撑</text>
+  </view>
+
+  <!-- 走马灯公告区 -->
+  <view class="marquee-bar" wx:if="{{marqueeItems.length > 0}}">
+    <view class="marquee-icon">📢</view>
+    <swiper
+      class="marquee-swiper"
+      autoplay
+      interval="3000"
+      circular
+      vertical
+      indicator-dots="{{false}}"
+    >
+      <swiper-item
+        wx:for="{{marqueeItems}}"
+        wx:key="id"
+        bindtap="onTapMarquee"
+        data-item="{{item}}"
+      >
+        <text class="marquee-text">{{item.text}}</text>
+      </swiper-item>
+    </swiper>
+    <text class="marquee-arrow">›</text>
+  </view>
+
+  <!-- 统计概览（按角色动态渲染） -->
+  <view class="card stats-card">
+    <text class="section-title">{{statsTitle}}</text>
+    <view class="stats-row">
+      <view
+        class="stat-item"
+        wx:for="{{statsConfig}}"
+        wx:key="key"
+      >
+        <text class="stat-num {{item.colorClass}}">{{stats[item.key] || 0}}</text>
+        <text class="stat-label">{{item.label}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 快捷入口 -->
+  <view class="card">
+    <text class="section-title">快捷入口</text>
+    <view class="shortcut-grid">
+      <view
+        class="shortcut-item"
+        wx:for="{{shortcuts}}"
+        wx:key="label"
+        data-url="{{item.url}}"
+        bindtap="onTapShortcut"
+      >
+        <text class="shortcut-icon">{{item.icon}}</text>
+        <text class="shortcut-label">{{item.label}}</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- 待办列表（按角色动态渲染） -->
+  <view class="card pending-card" wx:if="{{pendingList.length > 0}}">
+    <view class="section-header">
+      <text class="section-title">{{pendingTitle}}</text>
+      <text
+        class="section-more"
+        bindtap="onTapShortcut"
+        data-url="/pages/demand-list/demand-list"
+      >查看全部 ›</text>
+    </view>
+    <demand-card
+      wx:for="{{pendingList}}"
+      wx:key="id"
+      demand="{{item}}"
+      bindtap="onTapPendingDemand"
+    />
+  </view>
+
+  <!-- 空状态提示（当无待办时） -->
+  <view class="card empty-card" wx:if="{{pendingList.length === 0 && currentRole !== 'ADMIN'}}">
+    <text class="empty-text">暂无待处理事项</text>
+  </view>
+</view>
