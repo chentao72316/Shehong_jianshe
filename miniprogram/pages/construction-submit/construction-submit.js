@@ -2,6 +2,11 @@ const { submitConstruction, getDemandDetail } = require('../../utils/api');
 const { uploadFile } = require('../../utils/request');
 const { validateConstructionForm } = require('../../utils/validate');
 const { ASSET_STATUS } = require('../../utils/constants');
+const DEBUG = false;
+
+function debugLog(...args) {
+  if (DEBUG) console.log(...args);
+}
 
 Page({
   data: {
@@ -72,13 +77,13 @@ Page({
     wx.showLoading({ title: '上传中...' });
     const app = getApp();
     const serverUrl = app.globalData.serverUrl || 'http://localhost:3000';
-    console.log('选择文件数:', res.tempFiles.length);
-    console.log('serverUrl:', serverUrl);
+    debugLog('选择文件数:', res.tempFiles.length);
+    debugLog('serverUrl:', serverUrl);
     try {
       const results = await Promise.all(res.tempFiles.map(f => uploadFile(f.tempFilePath, 'image')));
-      console.log('上传结果:', results);
+      debugLog('上传结果:', results);
       const urls = results.map(r => serverUrl + r.data.url);
-      console.log('图片URLs:', urls);
+      debugLog('图片URLs:', urls);
       this.setData({ 'form.photos': [...this.data.form.photos, ...urls] });
       wx.showToast({ title: '上传成功', icon: 'success' });
     } catch (err) {

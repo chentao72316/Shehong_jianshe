@@ -105,11 +105,10 @@ Page({
   _callFastGPT(userText) {
     return new Promise((resolve, reject) => {
       // 获取或创建 chatId（同 session 复用，支持多轮上下文）
-      let chatId = wx.getStorageSync('ask_chat_id');
-      if (!chatId) {
-        const openid = wx.getStorageSync('openid') || 'anon';
-        chatId = `wx_${openid}_${Date.now()}`;
-        wx.setStorageSync('ask_chat_id', chatId);
+      let sessionId = wx.getStorageSync('ask_session_id');
+      if (!sessionId) {
+        sessionId = `s_${Date.now()}`;
+        wx.setStorageSync('ask_session_id', sessionId);
       }
 
       wx.request({
@@ -120,7 +119,7 @@ Page({
           'Authorization': app.globalData.token ? `Bearer ${app.globalData.token}` : '',
         },
         data: {
-          chatId,
+          sessionId,
           message: userText,
         },
         success(res) {

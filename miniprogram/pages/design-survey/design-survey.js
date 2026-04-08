@@ -2,6 +2,11 @@ const { submitDesign, getDemandDetail } = require('../../utils/api');
 const { uploadFile } = require('../../utils/request');
 const { validateDesignForm } = require('../../utils/validate');
 const app = getApp();
+const DEBUG = false;
+
+function debugLog(...args) {
+  if (DEBUG) console.log(...args);
+}
 
 // 文件类型映射：扩展名 -> { type: 'image'|'pdf'|'doc'|'other', label: 显示名称, icon: 图标 }
 const FILE_TYPE_MAP = {
@@ -221,21 +226,21 @@ Page({
           mediaType: ['image'],
           sourceType: ['album', 'camera']
         });
-        console.log('选择图片结果:', res);
+        debugLog('选择图片结果:', res);
       } else {
         // 上传文件（支持任意文件类型）
         // 注意：不指定 type，让用户可以选择所有文件类型
         res = await wx.chooseMessageFile({
           count: maxCount
         });
-        console.log('选择文件结果:', res);
+        debugLog('选择文件结果:', res);
       }
       // 兼容 chooseMessageFile 和 chooseMedia 的返回格式
       const tempFiles = res.tempFiles || res.tempFiles;
       if (!tempFiles || tempFiles.length === 0) return;
       wx.showLoading({ title: '上传中...' });
       try {
-        console.log('准备上传的文件:', tempFiles);
+        debugLog('准备上传的文件:', tempFiles);
         // 兼容 chooseMessageFile (path) 和 chooseMedia (tempFilePath) 的返回格式
         const validFiles = tempFiles.filter(f => f.tempFilePath || f.path);
         if (validFiles.length === 0) {
@@ -261,7 +266,7 @@ Page({
         });
         wx.hideLoading();  // 先关 loading，再显示 toast，避免 showLoading/hideLoading 不配对警告
         wx.showToast({ title: '上传成功', icon: 'success' });
-        console.log('设计图纸已上传:', newDesignFiles, '类型:', newFileTypes);
+        debugLog('设计图纸已上传:', newDesignFiles, '类型:', newFileTypes);
       } catch (uploadErr) {
         console.error('上传文件失败:', uploadErr);
         wx.hideLoading();
@@ -282,8 +287,8 @@ Page({
     this.setData({ errors: {} });
 
     const { valid, errors } = validateDesignForm(this.data.form);
-    console.log('表单验证结果:', valid, errors);
-    console.log('表单数据:', this.data.form);
+    debugLog('表单验证结果:', valid, errors);
+    debugLog('表单数据:', this.data.form);
     if (!valid) {
       this.setData({ errors });
       const firstError = Object.values(errors)[0];
@@ -294,9 +299,9 @@ Page({
     this.setData({ submitting: true, errors: {} });
     try {
       wx.showLoading({ title: '提交中...' });
-      console.log('开始提交到服务器...');
+      debugLog('开始提交到服务器...');
       const res = await submitDesign({ demandId: this.data.demandId, ...this.data.form });
-      console.log('提交成功:', res);
+      debugLog('提交成功:', res);
       wx.hideLoading();
       wx.showToast({ title: '查勘提交成功', icon: 'success' });
       setTimeout(() => {

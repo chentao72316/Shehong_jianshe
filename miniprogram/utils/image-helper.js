@@ -7,6 +7,11 @@ const RETRY_DELAY = 1000;
 const COMPRESS_QUALITY = 80;
 const SIZE_THRESHOLD = 2 * 1024 * 1024; // 2MB
 const TARGET_SIZE = 500 * 1024; // 500KB
+const DEBUG = false;
+
+function debugLog(...args) {
+  if (DEBUG) console.log(...args);
+}
 
 // 离线草稿队列Key
 const DRAFT_KEY = 'upload_draft_queue';
@@ -77,7 +82,7 @@ function saveToDraftQueue(item) {
     timestamp: Date.now()
   });
   wx.setStorageSync(DRAFT_KEY, queue);
-  console.log('已存入离线草稿队列', item);
+  debugLog('已存入离线草稿队列', item);
 }
 
 /**
@@ -122,7 +127,7 @@ async function uploadWithRetry(uploadFn, filePath, fileType = 'image', retryCoun
     if (retryCount < MAX_RETRIES - 1) {
       // 指数退避等待
       const delay = RETRY_DELAY * Math.pow(2, retryCount);
-      console.log(`上传失败，${delay}ms后重试第${retryCount + 2}次`, filePath);
+      debugLog(`上传失败，${delay}ms后重试第${retryCount + 2}次`, filePath);
       await new Promise(r => setTimeout(r, delay));
       return uploadWithRetry(uploadFn, filePath, fileType, retryCount + 1);
     }
@@ -162,7 +167,7 @@ async function retryDraftUploads(uploadFn) {
     return { success: 0, failed: 0 };
   }
 
-  console.log('开始重试离线草稿，共', queue.length, '个');
+  debugLog('开始重试离线草稿，共', queue.length, '个');
   let success = 0;
   let failed = 0;
   const failedItems = [];
@@ -180,7 +185,7 @@ async function retryDraftUploads(uploadFn) {
   // 更新队列，保留失败的
   wx.setStorageSync(DRAFT_KEY, failedItems);
 
-  console.log(`离线草稿重试完成: 成功${success}个, 失败${failed}个`);
+  debugLog(`离线草稿重试完成: 成功${success}个, 失败${failed}个`);
   return { success, failed };
 }
 
@@ -192,7 +197,7 @@ function autoRetryDrafts(uploadFn) {
   setTimeout(async () => {
     const queue = getDraftQueue();
     if (queue.length > 0) {
-      console.log('检测到离线草稿，启动自动重试...');
+      debugLog('检测到离线草稿，启动自动重试...');
       await retryDraftUploads(uploadFn);
     }
   }, 3000);

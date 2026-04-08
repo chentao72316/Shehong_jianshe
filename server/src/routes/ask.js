@@ -8,10 +8,14 @@ const router = express.Router();
 
 router.post('/ask/chat', async (req, res, next) => {
   try {
-    const { chatId, message } = req.body;
+    const { sessionId, message } = req.body;
     const text = typeof message === 'string' ? message.trim() : '';
     if (!text) throw createError(400, '请输入问题内容');
     if (text.length > 2000) throw createError(400, '问题内容不能超过2000字');
+    const safeSessionId = typeof sessionId === 'string'
+      ? sessionId.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 64)
+      : 'default';
+    const chatId = `user_${req.user._id}_${safeSessionId || 'default'}`;
 
     const [hostCfg, keyCfg] = await Promise.all([
       Config.findOne({ key: 'FASTGPT_HOST' }).lean(),
@@ -23,7 +27,7 @@ router.post('/ask/chat', async (req, res, next) => {
     if (!host || !apiKey) throw createError(503, 'FastGPT 未配置，请联系管理员');
 
     const response = await axios.post(`${host}/v1/chat/completions`, {
-      chatId: chatId || `user_${req.user._id}`,
+      chatId,
       stream: false,
       detail: false,
       messages: [{ role: 'user', content: text }]

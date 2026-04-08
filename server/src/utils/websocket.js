@@ -26,8 +26,11 @@ const ROLE_ROOMS = {
  * @param {http.Server} server - HTTP服务器实例
  */
 function initWebSocket(server) {
+  const corsOrigin = process.env.WS_CORS_ORIGIN
+    ? process.env.WS_CORS_ORIGIN.split(',').map(origin => origin.trim()).filter(Boolean)
+    : false;
   io = new Server(server, {
-    cors: { origin: '*', methods: ['GET', 'POST'] },
+    cors: { origin: corsOrigin, methods: ['GET', 'POST'] },
     path: '/ws'
   });
 

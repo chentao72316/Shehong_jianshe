@@ -1,14 +1,19 @@
 const app = getApp();
 const { processAndUpload, autoRetryDrafts, retryDraftUploads } = require('./image-helper');
+const DEBUG = false;
+
+function debugLog(...args) {
+  if (DEBUG) console.log(...args);
+}
 
 function request(options) {
   const app = getApp();
   const token = app.globalData.token;
-  console.log('=== request ===');
-  console.log('URL:', app.globalData.serverUrl + options.url);
-  console.log('Token存在:', !!token);
-  console.log('Method:', options.method);
-  console.log('Data:', JSON.stringify(options.data || {}).slice(0, 100) + '...');
+  debugLog('=== request ===');
+  debugLog('URL:', app.globalData.serverUrl + options.url);
+  debugLog('Token存在:', !!token);
+  debugLog('Method:', options.method);
+  debugLog('Data:', JSON.stringify(options.data || {}).slice(0, 100) + '...');
   return new Promise((resolve, reject) => {
     wx.request({
       url: app.globalData.serverUrl + options.url,
@@ -19,8 +24,8 @@ function request(options) {
         'Authorization': token ? `Bearer ${token}` : ''
       },
       success(res) {
-        console.log('响应statusCode:', res.statusCode);
-        console.log('响应data:', JSON.stringify(res.data || {}).slice(0, 500));
+        debugLog('响应statusCode:', res.statusCode);
+        debugLog('响应data:', JSON.stringify(res.data || {}).slice(0, 500));
         if (res.statusCode === 200) {
           if (res.data.code === 0) {
             resolve(res.data);
@@ -47,7 +52,7 @@ function request(options) {
         }
       },
       fail(err) {
-        console.log('请求fail:', err);
+        debugLog('请求fail:', err);
         reject(new Error('网络连接失败'));
       }
     });
@@ -58,7 +63,7 @@ function request(options) {
 function uploadFile(filePath, fileType = 'image') {
   return new Promise((resolve, reject) => {
     const token = app.globalData.token;
-    console.log('上传文件，token存在:', !!token);
+    debugLog('上传文件，token存在:', !!token);
     wx.uploadFile({
       url: app.globalData.serverUrl + `/api/upload/${fileType}`,
       filePath,
@@ -67,7 +72,7 @@ function uploadFile(filePath, fileType = 'image') {
         'Authorization': token ? `Bearer ${token}` : ''
       },
       success(res) {
-        console.log('上传响应:', res.data);
+        debugLog('上传响应:', res.data);
         let data;
         try {
           data = JSON.parse(res.data);

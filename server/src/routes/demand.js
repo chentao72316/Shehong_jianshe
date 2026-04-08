@@ -109,7 +109,7 @@ router.post('/demand/create', async (req, res, next) => {
       logContent = `跨区域需求已提交（提交网格：${submitterGridName}，受理区域：${acceptArea}）${reviewer ? '，待网格经理 ' + reviewer.name + ' 审核' : '，未找到对应网格经理'}`;
     } else {
       // 同区域：从 AreaConfig 查候选人，取第一个 active
-      const areaConfig = await AreaConfig.findOne({ acceptArea, active: true })
+      const areaConfig = await AreaConfig.findOne({ district: req.user.district || '射洪市', acceptArea, active: true })
         .populate('designCandidates', 'name active')
         .populate('constructionCandidates', 'name active')
         .populate('supervisorCandidates', 'name active')
@@ -129,9 +129,9 @@ router.post('/demand/create', async (req, res, next) => {
       } else {
         // 无区域配置，降级查 User 表（兼容旧逻辑）
         const [designUser, constructionUser, supervisorUser] = await Promise.all([
-          User.findOne({ area: acceptArea, roles: 'DESIGN', active: true }),
-          User.findOne({ area: acceptArea, roles: 'CONSTRUCTION', active: true }),
-          User.findOne({ area: acceptArea, roles: 'SUPERVISOR', active: true })
+          User.findOne({ district: req.user.district || '射洪市', area: acceptArea, roles: 'DESIGN', active: true }),
+          User.findOne({ district: req.user.district || '射洪市', area: acceptArea, roles: 'CONSTRUCTION', active: true }),
+          User.findOne({ district: req.user.district || '射洪市', area: acceptArea, roles: 'SUPERVISOR', active: true })
         ]);
         assignedDesignUnit = designUser ? designUser._id : null;
         assignedConstructionUnit = constructionUser ? constructionUser._id : null;
@@ -144,6 +144,7 @@ router.post('/demand/create', async (req, res, next) => {
 
     const demand = await Demand.create({
       demandNo,
+      district: req.user.district || '射洪市',
       acceptArea,
       submitterPhone,
       demandPersonName,
@@ -629,7 +630,7 @@ router.post('/demand/cross-area-review', requireRole('GRID_MANAGER'), async (req
 
     if (approve) {
       // 审核通过：查 AreaConfig 指派设计候选人
-      const areaConfig = await AreaConfig.findOne({ acceptArea: demand.acceptArea, active: true })
+      const areaConfig = await AreaConfig.findOne({ district: demand.district, acceptArea: demand.acceptArea, active: true })
         .populate('designCandidates', 'name active')
         .populate('constructionCandidates', 'name active')
         .populate('supervisorCandidates', 'name active')
@@ -643,9 +644,9 @@ router.post('/demand/cross-area-review', requireRole('GRID_MANAGER'), async (req
       } else {
         // 降级：按 area 字段查
         [designUser, constructionUser, supervisorUser] = await Promise.all([
-          User.findOne({ area: demand.acceptArea, roles: 'DESIGN', active: true }),
-          User.findOne({ area: demand.acceptArea, roles: 'CONSTRUCTION', active: true }),
-          User.findOne({ area: demand.acceptArea, roles: 'SUPERVISOR', active: true })
+          User.findOne({ district: demand.district, area: demand.acceptArea, roles: 'DESIGN', active: true }),
+          User.findOne({ district: demand.district, area: demand.acceptArea, roles: 'CONSTRUCTION', active: true }),
+          User.findOne({ district: demand.district, area: demand.acceptArea, roles: 'SUPERVISOR', active: true })
         ]);
       }
 
