@@ -8,6 +8,7 @@ const { logger } = require('../utils/logger');
 const { broadcastDemandUpdate } = require('../utils/websocket');
 const { sendAssignMessages, sendStatusChangeMessages } = require('../utils/msgHelper');
 const { canUserAccessDemand } = require('../utils/demand-access');
+const { recalculateDemandDurations } = require('../utils/demand-duration');
 
 const router = express.Router();
 
@@ -215,25 +216,7 @@ router.post('/intervene/confirm', requireRole('NETWORK_MANAGER', 'ADMIN'), async
       demand.completedTime = now;
       demand.confirmBy = req.user._id;
       demand.confirmTime = now;
-
-      // 计算历时（分钟）
-      if (demand.createdAt) {
-        demand.totalDuration = Math.floor((now - new Date(demand.createdAt)) / 60000);
-      }
-      if (demand.designAssignTime && demand.constructionAssignTime) {
-        // 正常流程：设计历时 = 施工指派时间 - 设计指派时间
-        demand.designDuration = Math.floor(
-          (new Date(demand.constructionAssignTime) - new Date(demand.designAssignTime)) / 60000
-        );
-      } else if (demand.designAssignTime) {
-        // hasResource=true：跳过施工，设计历时 = 确认时间 - 设计指派时间
-        demand.designDuration = Math.floor((now - new Date(demand.designAssignTime)) / 60000);
-      }
-      if (demand.constructionAssignTime) {
-        demand.constructionDuration = Math.floor(
-          (now - new Date(demand.constructionAssignTime)) / 60000
-        );
-      }
+      recalculateDemandDurations(demand, now);
 
       demand.logs.push({
         content: `网络支撑经理 ${req.user.name} 确认施工完成，需求已开通`,

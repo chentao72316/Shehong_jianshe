@@ -1,5 +1,5 @@
 {
-  "appid": "wx29b94ada97e55539",
+  "appid": "wx22cb7f29042d402b",
   "projectname": "shehong-jianshe",
   "description": "射洪建设支撑小程序",
   "setting": {
@@ -48,7 +48,7 @@
     "disableSWC": true
   },
   "compileType": "miniprogram",
-  "libVersion": "3.7.12",
+  "libVersion": "3.15.0",
   "srcMiniprogramRoot": "miniprogram/",
   "packOptions": {
     "ignore": [],

@@ -32,6 +32,11 @@
     </view>
 
     <view class="form-item">
+      <text class="form-label">完工位置详细描述</text>
+      <textarea class="form-textarea" placeholder="选填，请补充完工位置详细描述" data-field="constructionLocationDetail" bindinput="onInputChange" value="{{form.constructionLocationDetail}}" />
+    </view>
+
+    <view class="form-item">
       <text class="form-label required">现场照片（最多9张）</text>
       <view class="photo-grid">
         <image

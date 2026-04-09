@@ -7,11 +7,13 @@ Page({
     currentTab: 'wx',     // 'wx' | 'phone'
     phone: '',
     password: '',
+    showPassword: false,
     // 绑定弹窗
     showBindModal: false,
     bindToken: '',
     bindPhone: '',
-    bindPassword: ''
+    bindPassword: '',
+    showBindPassword: false
   },
 
   /**
@@ -33,6 +35,13 @@ Page({
    */
   onPasswordInput(e) {
     this.setData({ password: e.detail.value });
+  },
+
+  /**
+   * 切换密码可见状态
+   */
+  togglePasswordVisible() {
+    this.setData({ showPassword: !this.data.showPassword });
   },
 
   /**
@@ -120,6 +129,13 @@ Page({
   },
 
   /**
+   * 切换绑定弹窗密码可见状态
+   */
+  toggleBindPasswordVisible() {
+    this.setData({ showBindPassword: !this.data.showBindPassword });
+  },
+
+  /**
    * 取消绑定
    */
   onCancelBind() {
@@ -127,7 +143,8 @@ Page({
       showBindModal: false,
       bindToken: '',
       bindPhone: '',
-      bindPassword: ''
+      bindPassword: '',
+      showBindPassword: false
     });
   },
 
@@ -155,7 +172,8 @@ Page({
         showBindModal: false,
         bindToken: '',
         bindPhone: '',
-        bindPassword: ''
+        bindPassword: '',
+        showBindPassword: false
       });
       this.handleLoginSuccess(res);
     } catch (err) {

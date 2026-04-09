@@ -36,6 +36,7 @@ const demandSchema = new mongoose.Schema({
   designAssignTime: { type: Date },
   constructionAssignTime: { type: Date },
   completedTime: { type: Date },
+  completionMode: { type: String, enum: ['EXISTING_RESOURCE', 'CONSTRUCTION_BUILD', ''], default: '' },
   // 设计信息
   hasResource: { type: Boolean },
   resourceName: { type: String },
@@ -48,6 +49,7 @@ const demandSchema = new mongoose.Schema({
   assetStatus: { type: String, enum: ['已生效', '待生效', '未生效'] },
   constructionLat: { type: Number },
   constructionLng: { type: Number },
+  constructionLocationDetail: { type: String, default: '' },
   constructionRemark: { type: String },
   // 网格经理确认信息
   confirmBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },  // 确认人

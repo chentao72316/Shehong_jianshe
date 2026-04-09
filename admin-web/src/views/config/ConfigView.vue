@@ -15,6 +15,8 @@
         <el-form-item label="FastGPT 服务地址">
           <el-input
             v-model="fastgptForm.host"
+            name="fastgpt-host"
+            autocomplete="off"
             placeholder="例如 https://cloud.fastgpt.cn/api"
             style="max-width: 480px;"
             clearable
@@ -23,6 +25,8 @@
         <el-form-item label="FastGPT API Key">
           <el-input
             v-model="fastgptForm.apiKey"
+            name="fastgpt-api-key"
+            autocomplete="new-password"
             :type="showApiKey ? 'text' : 'password'"
             placeholder="fastgpt-xxxxxxxxxxxxxxxxxxxxxxxx"
             style="max-width: 480px;"

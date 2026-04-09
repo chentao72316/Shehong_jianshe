@@ -1,32 +1,6 @@
 const Config = require('../models/config.model');
 const { logger } = require('../utils/logger');
 
-// 服务中心与网络支撑中心默认映射（按区县分层）
-const DEFAULT_CENTER_NETWORK_MAP = {
-  '射洪市': {
-    '太和东服务中心': '城区网络支撑中心',
-    '太和西服务中心': '城区网络支撑中心',
-    '平安街道服务中心': '城区网络支撑中心',
-    '大榆服务中心': '河东网络支撑中心',
-    '仁和服务中心': '河东网络支撑中心',
-    '复兴服务中心': '河东网络支撑中心',
-    '沱牌服务中心': '河西网络支撑中心',
-    '金华服务中心': '河西网络支撑中心',
-    '太乙服务中心': '河西网络支撑中心',
-    '射洪分公司': '网络建维中心',
-    '销售中心': '网络建维中心',
-    '校园服务中心': '网络建维中心',
-    '商客服务中心': '网络建维中心',
-    '企业服务中心': '网络建维中心',
-    '集团客户中心': '网络建维中心',
-    '高质量服务中心': '网络建维中心'
-  },
-  '蓬溪县': {},
-  '大英县': {},
-  '船山区': {},
-  '安居区': {}
-};
-
 // 默认超时阈值配置
 const DEFAULT_TIMEOUT_CONFIG = {
   designTimeoutDays: 2,
@@ -38,31 +12,6 @@ const DEFAULT_TIMEOUT_CONFIG = {
 // 初始化系统配置
 async function initSystemConfig() {
   try {
-  // 初始化服务中心与网络支撑中心映射
-  const existingConfig = await Config.findOne({ key: 'CENTER_NETWORK_MAP' });
-  if (!existingConfig) {
-    await Config.create({
-      key: 'CENTER_NETWORK_MAP',
-      value: DEFAULT_CENTER_NETWORK_MAP,
-      label: '服务中心网络支撑映射',
-      description: '各区县服务中心与网络支撑中心的对应关系，用于需求创建时自动带出网络支撑中心'
-    });
-    logger.info('系统配置初始化：CENTER_NETWORK_MAP 已创建（嵌套格式）');
-  } else {
-    // 旧格式迁移：若 value 是平铺对象（首层 key 不是区县名），自动包裹到射洪市
-    const v = existingConfig.value;
-    const DISTRICT_KEYS = new Set(['射洪市', '蓬溪县', '大英县', '船山区', '安居区']);
-    const topKeys = Object.keys(v || {});
-    const isFlat = topKeys.length > 0 && !topKeys.some(k => DISTRICT_KEYS.has(k));
-    if (isFlat) {
-      const migrated = { '射洪市': v, '蓬溪县': {}, '大英县': {}, '船山区': {}, '安居区': {} };
-      await Config.updateOne({ key: 'CENTER_NETWORK_MAP' }, { $set: { value: migrated } });
-      logger.info('系统配置迁移：CENTER_NETWORK_MAP 从平铺格式升级为嵌套格式');
-    } else {
-      logger.info('系统配置初始化：CENTER_NETWORK_MAP 已存在，跳过');
-    }
-  }
-
     // 初始化超时阈值配置
     const existingTimeoutConfig = await Config.findOne({ key: 'TIMEOUT_CONFIG' });
     if (!existingTimeoutConfig) {
@@ -108,4 +57,4 @@ async function initSystemConfig() {
   }
 }
 
-module.exports = { initSystemConfig, DEFAULT_CENTER_NETWORK_MAP, DEFAULT_TIMEOUT_CONFIG };
+module.exports = { initSystemConfig, DEFAULT_TIMEOUT_CONFIG };

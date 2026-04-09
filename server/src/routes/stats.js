@@ -49,6 +49,37 @@ router.get('/stats/grid', requireRole('GRID_MANAGER', 'NETWORK_MANAGER', 'LEVEL4
           area: { $first: '$acceptArea' },
           total: { $sum: 1 },
           completed: { $sum: { $cond: [{ $eq: ['$status', '已开通'] }, 1, 0] } },
+          existingResourceCompleted: { $sum: { $cond: [
+            { $and: [
+              { $eq: ['$status', '已开通'] },
+              { $or: [
+                { $eq: ['$completionMode', 'EXISTING_RESOURCE'] },
+                { $and: [
+                  { $in: ['$completionMode', [null, '']] },
+                  { $eq: ['$hasResource', true] },
+                  { $eq: ['$constructionAssignTime', null] },
+                  { $in: ['$coverageName', [null, '']] }
+                ] }
+              ] }
+            ] },
+            1, 0
+          ] } },
+          constructionBuildCompleted: { $sum: { $cond: [
+            { $and: [
+              { $eq: ['$status', '已开通'] },
+              { $or: [
+                { $eq: ['$completionMode', 'CONSTRUCTION_BUILD'] },
+                { $and: [
+                  { $in: ['$completionMode', [null, '']] },
+                  { $or: [
+                    { $ne: ['$constructionAssignTime', null] },
+                    { $ne: ['$coverageName', null] }
+                  ] }
+                ] }
+              ] }
+            ] },
+            1, 0
+          ] } },
           timeout: { $sum: { $cond: ['$isTimeout', 1, 0] } },
           rejected: { $sum: { $cond: [{ $eq: ['$status', '已驳回'] }, 1, 0] } }
         }
@@ -61,8 +92,14 @@ router.get('/stats/grid', requireRole('GRID_MANAGER', 'NETWORK_MANAGER', 'LEVEL4
       area: item.area || '',
       total: item.total,
       completed: item.completed,
+      done: item.completed,
+      existingResourceCompleted: item.existingResourceCompleted,
+      existingResourceDone: item.existingResourceCompleted,
+      constructionBuildCompleted: item.constructionBuildCompleted,
+      constructionBuildDone: item.constructionBuildCompleted,
       timeout: item.timeout,
-      completionRate: item.total > 0 ? item.completed / item.total : 0
+      completionRate: item.total > 0 ? item.completed / item.total : 0,
+      doneRate: item.total > 0 ? Math.round((item.completed / item.total) * 100) : 0
     }));
     res.json({ code: 0, data: list });
   } catch (err) {
@@ -107,6 +144,37 @@ router.get('/stats/area', requireRole('GRID_MANAGER', 'NETWORK_MANAGER', 'LEVEL4
           _id: '$acceptArea',
           total: { $sum: 1 },
           completed: { $sum: { $cond: [{ $eq: ['$status', '已开通'] }, 1, 0] } },
+          existingResourceCompleted: { $sum: { $cond: [
+            { $and: [
+              { $eq: ['$status', '已开通'] },
+              { $or: [
+                { $eq: ['$completionMode', 'EXISTING_RESOURCE'] },
+                { $and: [
+                  { $in: ['$completionMode', [null, '']] },
+                  { $eq: ['$hasResource', true] },
+                  { $eq: ['$constructionAssignTime', null] },
+                  { $in: ['$coverageName', [null, '']] }
+                ] }
+              ] }
+            ] },
+            1, 0
+          ] } },
+          constructionBuildCompleted: { $sum: { $cond: [
+            { $and: [
+              { $eq: ['$status', '已开通'] },
+              { $or: [
+                { $eq: ['$completionMode', 'CONSTRUCTION_BUILD'] },
+                { $and: [
+                  { $in: ['$completionMode', [null, '']] },
+                  { $or: [
+                    { $ne: ['$constructionAssignTime', null] },
+                    { $ne: ['$coverageName', null] }
+                  ] }
+                ] }
+              ] }
+            ] },
+            1, 0
+          ] } },
           inProgress: {
             $sum: {
               $cond: [
@@ -125,9 +193,15 @@ router.get('/stats/area', requireRole('GRID_MANAGER', 'NETWORK_MANAGER', 'LEVEL4
       area: item._id || '未分配',
       total: item.total,
       completed: item.completed,
+      done: item.completed,
+      existingResourceCompleted: item.existingResourceCompleted,
+      existingResourceDone: item.existingResourceCompleted,
+      constructionBuildCompleted: item.constructionBuildCompleted,
+      constructionBuildDone: item.constructionBuildCompleted,
       inProgress: item.inProgress,
       timeout: item.timeout,
-      completionRate: item.total > 0 ? item.completed / item.total : 0
+      completionRate: item.total > 0 ? item.completed / item.total : 0,
+      doneRate: item.total > 0 ? Math.round((item.completed / item.total) * 100) : 0
     }));
     res.json({ code: 0, data: list });
   } catch (err) {

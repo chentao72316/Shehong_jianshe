@@ -124,6 +124,9 @@
           <el-descriptions-item label="状态">
             <el-tag :type="getStatusType(currentDemand.status)">{{ currentDemand.status }}</el-tag>
           </el-descriptions-item>
+          <el-descriptions-item label="开通方式" v-if="currentDemand.status === '已开通' && currentDemand.completionModeLabel">
+            <el-tag type="success" size="small">{{ currentDemand.completionModeLabel }}</el-tag>
+          </el-descriptions-item>
           <el-descriptions-item label="紧急度">
             <el-tag :type="getUrgencyType(currentDemand.urgency)" size="small">{{ currentDemand.urgency }}</el-tag>
           </el-descriptions-item>
@@ -142,6 +145,20 @@
           <el-descriptions-item label="预约客户数">{{ currentDemand.reservedCustomers ?? '-' }}</el-descriptions-item>
           <el-descriptions-item label="驳回次数" v-if="currentDemand.rejectCount">{{ currentDemand.rejectCount }}</el-descriptions-item>
           <el-descriptions-item label="位置" :span="2">{{ currentDemand.locationDetail || '-' }}</el-descriptions-item>
+          <el-descriptions-item
+            label="完工位置"
+            :span="2"
+            v-if="currentDemand.constructionLat != null && currentDemand.constructionLng != null"
+          >
+            {{ currentDemand.constructionLat }}, {{ currentDemand.constructionLng }}
+          </el-descriptions-item>
+          <el-descriptions-item
+            label="完工位置详细描述"
+            :span="2"
+            v-if="currentDemand.constructionLocationDetail"
+          >
+            {{ currentDemand.constructionLocationDetail }}
+          </el-descriptions-item>
           <el-descriptions-item label="备注" :span="2" v-if="currentDemand.remark">{{ currentDemand.remark }}</el-descriptions-item>
           <el-descriptions-item label="驳回原因" :span="2" v-if="currentDemand.rejectionReason">
             <span style="color: #F56C6C;">{{ currentDemand.rejectionReason }}</span>
@@ -150,6 +167,94 @@
             {{ getUsername(currentDemand.crossAreaReviewerId) }}
           </el-descriptions-item>
         </el-descriptions>
+
+        <el-divider>现场照片</el-divider>
+        <div class="detail-section">
+          <div class="section-caption">需求提交时上传的现场照片，支持点击查看大图。</div>
+          <div v-if="sitePhotoUrls.length" class="photo-preview-grid">
+            <el-image
+              v-for="(url, index) in sitePhotoUrls"
+              :key="`${url}-${index}`"
+              :src="url"
+              :preview-src-list="sitePhotoUrls"
+              :initial-index="index"
+              fit="cover"
+              preview-teleported
+              class="detail-photo"
+            />
+          </div>
+          <el-empty v-else description="暂无现场照片" :image-size="72" />
+        </div>
+
+        <el-divider>现有资源照片</el-divider>
+        <div class="detail-section">
+          <div class="section-caption">设计查勘阶段上传的现有资源照片，支持点击查看大图。</div>
+          <div v-if="resourcePhotoUrls.length" class="photo-preview-grid">
+            <el-image
+              v-for="(url, index) in resourcePhotoUrls"
+              :key="`${url}-${index}`"
+              :src="url"
+              :preview-src-list="resourcePhotoUrls"
+              :initial-index="index"
+              fit="cover"
+              preview-teleported
+              class="detail-photo"
+            />
+          </div>
+          <el-empty
+            v-else
+            :description="currentDemand.hasResource ? '暂无现有资源照片' : '该工单不是现有资源场景'"
+            :image-size="72"
+          />
+        </div>
+
+        <el-divider>施工照片</el-divider>
+        <div class="detail-section">
+          <div class="section-caption">施工完工阶段上传的现场施工照片，支持点击查看大图。</div>
+          <div v-if="constructionPhotoUrls.length" class="photo-preview-grid">
+            <el-image
+              v-for="(url, index) in constructionPhotoUrls"
+              :key="`${url}-${index}`"
+              :src="url"
+              :preview-src-list="constructionPhotoUrls"
+              :initial-index="index"
+              fit="cover"
+              preview-teleported
+              class="detail-photo"
+            />
+          </div>
+          <el-empty v-else description="暂无施工照片" :image-size="72" />
+        </div>
+
+        <template v-if="designImageUrls.length || designFileLinks.length">
+          <el-divider>设计文件</el-divider>
+
+          <div v-if="designImageUrls.length" class="photo-preview-grid">
+            <el-image
+              v-for="(url, index) in designImageUrls"
+              :key="`${url}-${index}`"
+              :src="url"
+              :preview-src-list="designImageUrls"
+              :initial-index="index"
+              fit="cover"
+              preview-teleported
+              class="detail-photo"
+            />
+          </div>
+
+          <div v-if="designFileLinks.length" class="file-link-list">
+            <el-link
+              v-for="file in designFileLinks"
+              :key="file.url"
+              :href="file.url"
+              target="_blank"
+              type="primary"
+              class="file-link-item"
+            >
+              {{ file.name }}
+            </el-link>
+          </div>
+        </template>
 
         <el-divider>流程记录</el-divider>
         <el-timeline v-if="currentDemand.logs?.length">
@@ -172,7 +277,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { getDemandList, getDemandDetail, exportDemands, deleteDemand } from '@/api/demand'
 import { useUserStore } from '@/stores/user'
@@ -187,6 +292,7 @@ const loading = ref(false)
 const exporting = ref(false)
 const detailVisible = ref(false)
 const currentDemand = ref<Demand | null>(null)
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || '/api'
 
 const currentPage = ref(1)
 const pageSize = ref(20)
@@ -198,6 +304,60 @@ const searchArea = ref('')
 const searchDateRange = ref<[string, string] | null>(null)
 
 const demandList = ref<Demand[]>([])
+
+const normalizeAttachmentUrl = (url?: string) => {
+  if (!url) return ''
+  if (/^https?:\/\//i.test(url)) return url
+  const normalizedUrl = url.startsWith('/') ? url : `/${url}`
+  const serverBaseUrl = apiBaseUrl.endsWith('/api') ? apiBaseUrl.slice(0, -4) : apiBaseUrl
+  return serverBaseUrl ? `${serverBaseUrl}${normalizedUrl}` : normalizedUrl
+}
+
+const getFileNameFromUrl = (url: string) => {
+  const pathname = url.split('?')[0]
+  return pathname.split('/').pop() || '附件'
+}
+
+const isImageFile = (url: string) => {
+  return /\.(jpg|jpeg|png|gif|webp|bmp)$/i.test(url.split('?')[0])
+}
+
+const resourcePhotoUrls = computed(() => {
+  return (currentDemand.value?.resourcePhotos || [])
+    .map((item) => normalizeAttachmentUrl(item))
+    .filter(Boolean)
+})
+
+const sitePhotoUrls = computed(() => {
+  return (currentDemand.value?.photos || [])
+    .map((item) => normalizeAttachmentUrl(item))
+    .filter(Boolean)
+})
+
+const constructionPhotoUrls = computed(() => {
+  return (currentDemand.value?.constructionPhotos || [])
+    .map((item) => normalizeAttachmentUrl(item))
+    .filter(Boolean)
+})
+
+const normalizedDesignFileUrls = computed(() => {
+  return (currentDemand.value?.designFiles || [])
+    .map((item) => normalizeAttachmentUrl(item))
+    .filter(Boolean)
+})
+
+const designImageUrls = computed(() => {
+  return normalizedDesignFileUrls.value.filter((url) => isImageFile(url))
+})
+
+const designFileLinks = computed(() => {
+  return normalizedDesignFileUrls.value
+    .filter((url) => !isImageFile(url))
+    .map((url) => ({
+      url,
+      name: getFileNameFromUrl(url)
+    }))
+})
 
 // 阶段 -> 状态映射
 const stageStatusMap: Record<string, string[]> = {
@@ -345,6 +505,42 @@ watch(() => districtStore.apiDistrict, () => {
   margin-left: 12px;
   font-size: 14px;
   color: #909399;
+}
+
+.detail-section {
+  margin-bottom: 4px;
+}
+
+.section-caption {
+  margin-bottom: 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #909399;
+}
+
+.photo-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 12px;
+}
+
+.detail-photo {
+  width: 100%;
+  height: 120px;
+  border-radius: 8px;
+  border: 1px solid #ebeef5;
+  background: #f5f7fa;
+}
+
+.file-link-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.file-link-item {
+  max-width: 100%;
 }
 
 :deep(.el-table) { font-size: 14px; }

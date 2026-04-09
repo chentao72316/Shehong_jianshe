@@ -55,12 +55,21 @@
         <text class="input-label">密码</text>
         <input
           class="input-field"
-          type="password"
+          password="{{!showPassword}}"
           placeholder="请输入密码"
           bindinput="onPasswordInput"
           value="{{password}}"
           disabled="{{loading}}"
         />
+        <view
+          class="password-toggle"
+          bindtap="togglePasswordVisible"
+          aria-label="{{showPassword ? '隐藏密码' : '显示密码'}}"
+        >
+          <view class="eye-icon {{showPassword ? 'eye-icon--open' : 'eye-icon--closed'}}">
+            <view class="eye-pupil" wx:if="{{showPassword}}"></view>
+          </view>
+        </view>
       </view>
     </view>
     <button
@@ -95,11 +104,20 @@
         <text class="input-label">密码</text>
         <input
           class="input-field"
-          type="password"
+          password="{{!showBindPassword}}"
           placeholder="请输入密码"
           bindinput="onBindPasswordInput"
           value="{{bindPassword}}"
         />
+        <view
+          class="password-toggle"
+          bindtap="toggleBindPasswordVisible"
+          aria-label="{{showBindPassword ? '隐藏密码' : '显示密码'}}"
+        >
+          <view class="eye-icon {{showBindPassword ? 'eye-icon--open' : 'eye-icon--closed'}}">
+            <view class="eye-pupil" wx:if="{{showBindPassword}}"></view>
+          </view>
+        </view>
       </view>
     </view>
     <view class="bind-btn-group">

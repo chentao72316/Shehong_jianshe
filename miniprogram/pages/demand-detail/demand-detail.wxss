@@ -1,11 +1,34 @@
 .detail-header {
+  position: relative;
+  overflow: hidden;
   padding-bottom: 28rpx;
+  padding-right: 120rpx;
 }
 
 .demand-no {
   font-size: 30rpx;
   font-weight: bold;
   color: #262626;
+}
+
+.status-ribbon {
+  position: absolute;
+  top: 18rpx;
+  right: -52rpx;
+  width: 180rpx;
+  height: 44rpx;
+  background: #1677FF;
+  transform: rotate(45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4rpx 10rpx rgba(22, 119, 255, 0.22);
+}
+
+.status-ribbon-text {
+  font-size: 22rpx;
+  font-weight: 700;
+  color: #FFFFFF;
 }
 
 .progress-bar-wrap {

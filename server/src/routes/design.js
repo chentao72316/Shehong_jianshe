@@ -8,6 +8,7 @@ const { logger } = require('../utils/logger');
 const { notifyDesignComplete, notifyConstructionConfirm } = require('../utils/notify');
 const { broadcastDemandUpdate } = require('../utils/websocket');
 const { sendAssignMessages, sendStatusChangeMessages } = require('../utils/msgHelper');
+const { recalculateDemandDurations } = require('../utils/demand-duration');
 
 const router = express.Router();
 
@@ -73,6 +74,7 @@ router.post('/design/submit', requireRole('DESIGN'), async (req, res, next) => {
       });
     }
 
+    recalculateDemandDurations(demand, now);
     await demand.save();
     logger.info('设计查勘提交', { demandId, designBy: req.user._id, hasResource, designFileCount: designFiles ? designFiles.length : 0 });
     res.json({ code: 0, data: {} });

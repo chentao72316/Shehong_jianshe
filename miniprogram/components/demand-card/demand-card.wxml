@@ -21,6 +21,7 @@
     <text class="tag tag-type">{{demand.type}}</text>
     <text wx:if="{{demand.urgency === '特急'}}" class="tag tag-critical">特急</text>
     <text wx:elif="{{demand.urgency === '紧急'}}" class="tag tag-urgent">紧急</text>
+    <text wx:if="{{demand.status === '已开通' && demand.completionModeLabel}}" class="tag tag-completion">{{demand.completionModeLabel}}</text>
     <text class="info-text info-location" wx:if="{{demand.location}}" user-select="false">{{demand.location}}</text>
   </view>
 

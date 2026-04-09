@@ -17,6 +17,8 @@
         <text class="th">网格</text>
         <text class="th">总量</text>
         <text class="th">完成</text>
+        <text class="th">存量</text>
+        <text class="th">施工</text>
         <text class="th">超时</text>
         <text class="th">完成率</text>
       </view>
@@ -24,6 +26,8 @@
         <text class="td">{{item.gridName}}</text>
         <text class="td">{{item.total}}</text>
         <text class="td text-success">{{item.done}}</text>
+        <text class="td text-success">{{item.existingResourceDone || item.existingResourceCompleted || 0}}</text>
+        <text class="td text-info">{{item.constructionBuildDone || item.constructionBuildCompleted || 0}}</text>
         <text class="td text-danger">{{item.timeout}}</text>
         <text class="td">{{item.doneRate}}%</text>
       </view>
@@ -38,6 +42,8 @@
         <text class="th">区域</text>
         <text class="th">总量</text>
         <text class="th">完成</text>
+        <text class="th">存量</text>
+        <text class="th">施工</text>
         <text class="th">超时</text>
         <text class="th">完成率</text>
       </view>
@@ -45,6 +51,8 @@
         <text class="td">{{item.area}}</text>
         <text class="td">{{item.total}}</text>
         <text class="td text-success">{{item.done}}</text>
+        <text class="td text-success">{{item.existingResourceDone || item.existingResourceCompleted || 0}}</text>
+        <text class="td text-info">{{item.constructionBuildDone || item.constructionBuildCompleted || 0}}</text>
         <text class="td text-danger">{{item.timeout}}</text>
         <text class="td">{{item.doneRate}}%</text>
       </view>

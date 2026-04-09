@@ -115,6 +115,12 @@
   font-weight: bold;
 }
 
+.tag-completion {
+  background: #F6FFED;
+  color: #389E0D;
+  font-weight: bold;
+}
+
 /* ── 分隔线 ── */
 .divider {
   height: 1rpx;

@@ -60,10 +60,21 @@
 .timeline-operator {
   font-size: 22rpx;
   color: #1890FF;
+  font-weight: 700;
 }
 
 .timeline-text {
   font-size: 26rpx;
   color: #595959;
   line-height: 1.6;
+}
+
+.timeline-name {
+  color: #1890FF;
+  font-weight: 700;
+}
+
+.timeline-content-name {
+  color: #F5222D;
+  font-weight: 700;
 }

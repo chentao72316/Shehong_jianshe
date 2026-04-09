@@ -76,6 +76,8 @@
             <el-table-column prop="area" label="区域" />
             <el-table-column prop="total" label="总需求" width="80" />
             <el-table-column prop="completed" label="已完成" width="80" />
+            <el-table-column prop="existingResourceCompleted" label="存量开通" width="90" />
+            <el-table-column prop="constructionBuildCompleted" label="施工开通" width="90" />
             <el-table-column prop="inProgress" label="进行中" width="80" />
             <el-table-column prop="timeout" label="超时数" width="80">
               <template #default="{ row }">
@@ -102,6 +104,8 @@
             <el-table-column prop="area" label="区域" width="120" show-overflow-tooltip />
             <el-table-column prop="total" label="总需求" width="70" />
             <el-table-column prop="completed" label="完成" width="60" />
+            <el-table-column prop="existingResourceCompleted" label="存量" width="60" />
+            <el-table-column prop="constructionBuildCompleted" label="施工" width="60" />
             <el-table-column prop="timeout" label="超时" width="60">
               <template #default="{ row }">
                 <span :class="{ 'text-danger': row.timeout > 0 }">{{ row.timeout }}</span>

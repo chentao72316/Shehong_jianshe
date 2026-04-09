@@ -18,6 +18,7 @@ Page({
       assetStatus: '',
       latitude: null,
       longitude: null,
+      constructionLocationDetail: '',
       remark: ''
     },
     errors: {},
@@ -36,6 +37,27 @@ Page({
       const res = await getDemandDetail(this.data.demandId);
       this.setData({ demand: res.data });
     } catch {}
+  },
+
+  markPreviousPageRefresh() {
+    const pages = getCurrentPages();
+    const previousPage = pages[pages.length - 2];
+    if (previousPage && typeof previousPage.setData === 'function') {
+      previousPage.setData({ needsRefresh: true });
+    }
+  },
+
+  leaveAfterSubmit() {
+    const fallback = () => wx.switchTab({ url: '/pages/construction-task/construction-task' });
+    const pages = getCurrentPages();
+    if (pages.length > 1) {
+      wx.navigateBack({
+        delta: 1,
+        fail: fallback
+      });
+      return;
+    }
+    fallback();
   },
 
   onInputChange(e) {
@@ -120,7 +142,8 @@ Page({
       });
       wx.hideLoading();
       wx.showToast({ title: '施工完工提交成功', icon: 'success' });
-      setTimeout(() => wx.navigateBack(), 1500);
+      this.markPreviousPageRefresh();
+      setTimeout(() => this.leaveAfterSubmit(), 1500);
     } catch (err) {
       console.error('提交失败:', err);
       wx.hideLoading();

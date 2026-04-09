@@ -1,4 +1,4 @@
-const { createDemand, updateDemand, getConfig } = require('../../utils/api');
+const { createDemand, updateDemand, getAreaConfigByArea } = require('../../utils/api');
 const { uploadFile } = require('../../utils/request');
 const { validateDemandForm } = require('../../utils/validate');
 
@@ -43,8 +43,6 @@ Page({
     demandId: null,
     submitting: false,
     isCrossArea: false,
-    // 动态配置：服务中心 -> 网络支撑中心 映射
-    centerNetworkMap: {}
   },
 
   onLoad(options) {
@@ -57,29 +55,9 @@ Page({
       'form.serviceCenter': (userInfo && userInfo.gridName) || ''
     });
 
-    // 加载服务中心与网络支撑中心映射配置
-    this.loadCenterNetworkMap();
-
     if (options.demandId) {
       this.setData({ editMode: true, demandId: options.demandId });
       this.loadDemandForEdit(options.demandId);
-    }
-  },
-
-  // 从后端加载服务中心与网络支撑中心映射配置
-  async loadCenterNetworkMap() {
-    try {
-      const res = await getConfig('CENTER_NETWORK_MAP');
-      if (res.data) {
-        this.setData({ centerNetworkMap: res.data });
-        // 初始加载后，根据服务中心的值设置网络支撑中心
-        const serviceCenter = this.data.form.serviceCenter;
-        if (serviceCenter) {
-          this.setData({ 'form.networkSupport': res.data[serviceCenter] || '' });
-        }
-      }
-    } catch (err) {
-      console.error('加载服务中心映射配置失败', err);
     }
   },
 
@@ -121,26 +99,29 @@ Page({
       console.error('加载需求详情失败', err);
     }
   },
-  getNetworkSupportByCenter(center) {
-    const map = this.data.centerNetworkMap;
-    return map[center] || '';
-  },
-
   onInputChange(e) {
     const { field } = e.currentTarget.dataset;
     this.setData({ [`form.${field}`]: e.detail.value });
   },
 
-  onAreaChange(e) {
+  async onAreaChange(e) {
     const area = this.data.availableAreas[e.detail.value];
-    const networkSupport = this.getNetworkSupportByCenter(area);
     const userGridName = this.data._userGridName;
     const isCrossArea = !!userGridName && area !== userGridName;
     this.setData({
       'form.acceptArea': area,
-      'form.networkSupport': networkSupport,
+      'form.networkSupport': '',
       isCrossArea
     });
+    try {
+      const res = await getAreaConfigByArea(area);
+      const areaConfig = res.data;
+      if (areaConfig && areaConfig.networkCenter) {
+        this.setData({ 'form.networkSupport': areaConfig.networkCenter });
+      }
+    } catch (err) {
+      console.error('加载受理区域配置失败', err);
+    }
   },
 
   onBusinessTypeChange(e) {
@@ -204,7 +185,7 @@ Page({
   async onChoosePhotos() {
     const maxCount = 6 - this.data.form.photos.length;
     if (maxCount <= 0) {
-      wx.showToast({ title: '最多上传6个附件', icon: 'none' });
+      wx.showToast({ title: '最多上传6张现场照片', icon: 'none' });
       return;
     }
     let res;

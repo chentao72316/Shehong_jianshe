@@ -111,10 +111,58 @@
   font-size: 30rpx;
   color: #333;
   text-align: right;
+  min-width: 0;
 }
 
 .input-field::placeholder {
   color: #CCC;
+}
+
+.password-toggle {
+  flex-shrink: 0;
+  margin-left: 20rpx;
+  width: 64rpx;
+  height: 56rpx;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.eye-icon {
+  position: relative;
+  width: 44rpx;
+  height: 28rpx;
+  border: 3rpx solid #1E6F3F;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.eye-icon--open {
+  background: rgba(30, 111, 63, 0.04);
+}
+
+.eye-pupil {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12rpx;
+  height: 12rpx;
+  margin-left: -6rpx;
+  margin-top: -6rpx;
+  border-radius: 50%;
+  background: #1E6F3F;
+}
+
+.eye-icon--closed::after {
+  content: '';
+  position: absolute;
+  left: 4rpx;
+  top: 10rpx;
+  width: 34rpx;
+  height: 3rpx;
+  background: #1E6F3F;
+  transform: rotate(-35deg);
+  transform-origin: center;
 }
 
 /* 登录按钮 */

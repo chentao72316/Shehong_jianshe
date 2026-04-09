@@ -25,6 +25,52 @@ function processUrls(arr, serverUrl) {
   });
 }
 
+function escapeRegExp(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function addName(names, value) {
+  if (!value) return;
+  if (typeof value === 'string') {
+    names.add(value.trim());
+    return;
+  }
+  const name = value.name || value.realName || value.nickname || value.username;
+  if (name) names.add(String(name).trim());
+}
+
+function getDemandNames(demand) {
+  const names = new Set();
+  const userFields = [
+    'assignedDesignUnit',
+    'assignedConstructionUnit',
+    'assignedSupervisor',
+    'confirmBy',
+    'crossAreaReviewerId',
+    'rejectedBy',
+    'networkManager'
+  ];
+
+  userFields.forEach(field => addName(names, demand[field]));
+
+  return Array.from(names)
+    .filter(name => name && name.length >= 2)
+    .sort((a, b) => b.length - a.length);
+}
+
+function buildTimelineContentParts(content, names) {
+  const text = content || '';
+  if (!text || !names.length) return [{ text, highlight: false }];
+
+  const nameRegExp = new RegExp(`(${names.map(escapeRegExp).join('|')})`, 'g');
+  return text.split(nameRegExp)
+    .filter(Boolean)
+    .map(part => ({
+      text: part,
+      highlight: names.includes(part)
+    }));
+}
+
 Page({
   data: {
     id: null,
@@ -37,6 +83,7 @@ Page({
     demandSteps: [],
     designSubmitted: false,
     constructionSubmitted: false,
+    needsRefresh: false,
     // 干预弹窗
     showRemarkModal: false,
     showRejectModal: false,
@@ -65,15 +112,24 @@ Page({
     this.loadDetail();
   },
 
+  onShow() {
+    if (this.data.needsRefresh && this.data.id) {
+      this.setData({ needsRefresh: false });
+      this.loadDetail();
+    }
+  },
+
   async loadDetail() {
     if (!this.data.id) return;
     this.setData({ loading: true });
     try {
       const res = await getDemandDetail(this.data.id);
       const demand = res.data;
+      const timelineNames = getDemandNames(demand);
       const timeline = (demand.logs || []).map(log => ({
         time: formatTime(log.createdAt),
         content: log.content,
+        contentParts: buildTimelineContentParts(log.content, timelineNames),
         operator: log.operatorName,
         color: getTimelineColor(log.content)
       }));

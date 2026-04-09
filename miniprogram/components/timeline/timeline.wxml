@@ -9,9 +9,18 @@
     <view class="timeline-content">
       <view class="timeline-header">
         <text class="timeline-time">{{item.time}}</text>
-        <text class="timeline-operator" wx:if="{{item.operator}}">{{item.operator}}</text>
+        <text class="timeline-operator timeline-name" wx:if="{{item.operator}}">{{item.operator}}</text>
       </view>
-      <text class="timeline-text">{{item.content}}</text>
+      <view class="timeline-text" wx:if="{{item.contentParts && item.contentParts.length}}">
+        <text
+          wx:for="{{item.contentParts}}"
+          wx:for-item="part"
+          wx:for-index="partIndex"
+          wx:key="partIndex"
+          class="{{part.highlight ? 'timeline-content-name' : ''}}"
+        >{{part.text}}</text>
+      </view>
+      <text class="timeline-text" wx:else>{{item.content}}</text>
     </view>
   </view>
 </view>

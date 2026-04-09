@@ -1,9 +1,11 @@
 <view class="page-container" wx:if="{{!loading && demand}}">
   <!-- 头部状态 -->
   <view class="card detail-header">
+    <view class="status-ribbon">
+      <text class="status-ribbon-text">{{demand.status}}</text>
+    </view>
     <view class="flex-between">
       <text class="demand-no">{{demand.demandNo}}</text>
-      <status-badge status="{{demand.status}}" />
     </view>
     <!-- 步骤条组件 -->
     <view class="steps-wrap mt-16">
@@ -40,6 +42,10 @@
       <view class="info-row-item">
         <text class="info-key">网络支撑中心</text>
         <text class="info-val">{{demand.networkSupport || '-'}}</text>
+      </view>
+      <view class="info-row-item" wx:if="{{demand.status === '已开通' && demand.completionModeLabel}}">
+        <text class="info-key">开通方式</text>
+        <text class="info-val text-success">{{demand.completionModeLabel}}</text>
       </view>
       <view class="info-row-item">
         <text class="info-key">提交人</text>
@@ -183,6 +189,10 @@
       <view class="info-row-item" wx:if="{{demand.constructionLat && demand.constructionLng}}">
         <text class="info-key">施工位置</text>
         <text class="info-val">{{demand.constructionLat}}, {{demand.constructionLng}}</text>
+      </view>
+      <view class="info-row-item" wx:if="{{demand.constructionLocationDetail}}">
+        <text class="info-key">完工位置详细描述</text>
+        <text class="info-val">{{demand.constructionLocationDetail}}</text>
       </view>
     </view>
     <!-- 施工照片 -->

@@ -73,6 +73,17 @@ export interface Demand {
   designAssignTime?: string
   constructionAssignTime?: string
   completedTime?: string
+  completionMode?: 'EXISTING_RESOURCE' | 'CONSTRUCTION_BUILD' | ''
+  completionModeLabel?: string
+  hasResource?: boolean
+  resourceName?: string
+  photos?: string[]
+  resourcePhotos?: string[]
+  designFiles?: string[]
+  constructionPhotos?: string[]
+  constructionLat?: number
+  constructionLng?: number
+  constructionLocationDetail?: string
   createdAt?: string
   logs?: DemandLog[]
   rejectionReason?: string
@@ -119,6 +130,11 @@ export interface AreaStats {
   area: string
   total: number
   completed: number
+  existingResourceCompleted?: number
+  constructionBuildCompleted?: number
+  done?: number
+  existingResourceDone?: number
+  constructionBuildDone?: number
   inProgress: number
   timeout: number
   completionRate: number
@@ -130,6 +146,11 @@ export interface GridStats {
   area: string
   total: number
   completed: number
+  existingResourceCompleted?: number
+  constructionBuildCompleted?: number
+  done?: number
+  existingResourceDone?: number
+  constructionBuildDone?: number
   timeout: number
   completionRate: number
 }

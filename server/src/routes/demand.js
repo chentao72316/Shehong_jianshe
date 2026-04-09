@@ -11,6 +11,7 @@ const { notifyNewDemand, notifyRejected, notifyConstructionConfirm } = require('
 const { broadcastDemandUpdate } = require('../utils/websocket');
 const { sendAssignMessages, sendStatusChangeMessages, sendRejectMessage } = require('../utils/msgHelper');
 const { getDistrictFilter } = require('../utils/district');
+const { inferCompletionMode, getCompletionModeLabel } = require('../utils/completion-mode');
 
 const router = express.Router();
 
@@ -19,6 +20,12 @@ const router = express.Router();
  */
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function withExtraFilter(baseFilter, extraFilter) {
+  return Object.keys(baseFilter || {}).length
+    ? { $and: [baseFilter, extraFilter] }
+    : extraFilter;
 }
 
 /**
@@ -428,19 +435,54 @@ router.get('/demand/list', async (req, res, next) => {
       } else {
         timeoutFilter = { ...entityFilter, $or: timeoutOr };
       }
-      const [statsTotal, pending, designing, constructing, waitingConfirm, done, timeout] = await Promise.all([
+      const existingResourceFilter = withExtraFilter(entityFilter, {
+        status: '已开通',
+        $or: [
+          { completionMode: 'EXISTING_RESOURCE' },
+          { completionMode: { $in: [null, ''] }, hasResource: true, constructionAssignTime: { $exists: false }, coverageName: { $in: [null, ''] } }
+        ]
+      });
+      const constructionBuildFilter = withExtraFilter(entityFilter, {
+        status: '已开通',
+        $or: [
+          { completionMode: 'CONSTRUCTION_BUILD' },
+          { completionMode: { $in: [null, ''] }, $or: [{ constructionAssignTime: { $exists: true, $ne: null } }, { coverageName: { $nin: [null, ''] } }] }
+        ]
+      });
+      const [statsTotal, pending, designing, constructing, waitingConfirm, done, timeout, existingResourceDone, constructionBuildDone] = await Promise.all([
         Demand.countDocuments(entityFilter),
         Demand.countDocuments({ ...entityFilter, status: '待审核' }),
         Demand.countDocuments({ ...entityFilter, status: '设计中' }),
         Demand.countDocuments({ ...entityFilter, status: '施工中' }),
         Demand.countDocuments({ ...entityFilter, status: '待确认' }),
         Demand.countDocuments({ ...entityFilter, status: '已开通' }),
-        Demand.countDocuments(timeoutFilter)
+        Demand.countDocuments(timeoutFilter),
+        Demand.countDocuments(existingResourceFilter),
+        Demand.countDocuments(constructionBuildFilter)
       ]);
-      stats = { total: statsTotal, pending, designing, constructing, waitingConfirm, inProgress: pending + designing + constructing, done, timeout };
+      stats = {
+        total: statsTotal,
+        pending,
+        designing,
+        constructing,
+        waitingConfirm,
+        inProgress: pending + designing + constructing,
+        done,
+        existingResourceDone,
+        constructionBuildDone,
+        timeout
+      };
     }
 
-    const mappedList = list.map(item => ({ ...item, id: String(item._id) }));
+    const mappedList = list.map(item => {
+      const completionMode = inferCompletionMode(item);
+      return {
+        ...item,
+        id: String(item._id),
+        completionMode,
+        completionModeLabel: getCompletionModeLabel(completionMode)
+      };
+    });
     res.json({ code: 0, data: { list: mappedList, total, stats } });
   } catch (err) {
     next(err);
@@ -460,6 +502,8 @@ router.get('/demand/detail', async (req, res, next) => {
       .populate('assignedSupervisor', 'name phone')
       .populate('createdBy', 'name phone')
       .populate('crossAreaReviewerId', 'name phone')
+      .populate('confirmBy', 'name phone')
+      .populate('rejectedBy', 'name phone')
       .lean();
     if (!demand) throw createError(404, '需求不存在');
 
@@ -498,6 +542,17 @@ router.get('/demand/detail', async (req, res, next) => {
       }
       if (!hasAccess) throw createError(403, '无权访问此需求');
     }
+
+    const areaConfig = await AreaConfig.findOne({ district: demand.district, acceptArea: demand.acceptArea, active: true })
+      .populate('networkManagerId', 'name phone')
+      .lean();
+    if (areaConfig) {
+      demand.networkManager = areaConfig.networkManagerId || null;
+      demand.networkSupport = demand.networkSupport || areaConfig.networkCenter || '';
+    }
+    const completionMode = inferCompletionMode(demand);
+    demand.completionMode = completionMode;
+    demand.completionModeLabel = getCompletionModeLabel(completionMode);
 
     res.json({ code: 0, data: demand });
   } catch (err) {
@@ -810,7 +865,15 @@ router.get('/demand/pending', async (req, res, next) => {
         remainingDays = 5 - elapsed;
         timeoutDays = elapsed > 5 ? elapsed - 5 : null;
       }
-      return { ...item, id: String(item._id), timeoutDays, remainingDays };
+      const completionMode = inferCompletionMode(item);
+      return {
+        ...item,
+        id: String(item._id),
+        timeoutDays,
+        remainingDays,
+        completionMode,
+        completionModeLabel: getCompletionModeLabel(completionMode)
+      };
     });
 
     res.json({ code: 0, data: { list: mappedList } });

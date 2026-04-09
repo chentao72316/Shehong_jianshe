@@ -33,6 +33,19 @@
         <input class="form-input" placeholder="请填写现有资源名称" data-field="resourceName" bindinput="onInputChange" value="{{form.resourceName}}" />
         <text class="error-tip" wx:if="{{errors.resourceName}}">{{errors.resourceName}}</text>
       </view>
+
+      <view class="form-item">
+        <text class="form-label">现有资源照片（最多3张）</text>
+        <view class="photo-grid">
+          <view wx:for="{{form.resourcePhotos}}" wx:key="index" class="photo-item">
+            <image src="{{item}}" class="photo-thumb" mode="aspectFill" data-index="{{index}}" bindtap="onPreviewResourcePhoto" />
+            <view class="photo-delete" data-index="{{index}}" bindtap="onDeleteResourcePhoto">×</view>
+          </view>
+          <view class="photo-add" bindtap="onUploadResourcePhotos" wx:if="{{form.resourcePhotos.length < 3}}">
+            <text>+</text>
+          </view>
+        </view>
+      </view>
     </block>
 
     <!-- 无资源时的字段 -->

@@ -6,6 +6,7 @@ const { requireRole } = require('../middleware/auth');
 const { logger } = require('../utils/logger');
 const { broadcastDemandUpdate } = require('../utils/websocket');
 const { sendStatusChangeMessages } = require('../utils/msgHelper');
+const { recalculateDemandDurations } = require('../utils/demand-duration');
 
 const router = express.Router();
 
@@ -62,7 +63,7 @@ router.post('/construction/start', requireRole('CONSTRUCTION'), async (req, res,
  */
 router.post('/construction/submit', requireRole('CONSTRUCTION'), async (req, res, next) => {
   try {
-    const { demandId, coverageName, assetStatus, location, photos, remark } = req.body;
+    const { demandId, coverageName, assetStatus, location, constructionLocationDetail, photos, remark } = req.body;
 
     const demand = await Demand.findById(demandId);
     if (!demand) throw createError(404, '需求不存在');
@@ -83,6 +84,7 @@ router.post('/construction/submit', requireRole('CONSTRUCTION'), async (req, res
       demand.constructionLat = location.latitude;
       demand.constructionLng = location.longitude;
     }
+    demand.constructionLocationDetail = constructionLocationDetail || '';
     demand.constructionPhotos = photos || [];
     demand.constructionRemark = remark;
 
@@ -100,6 +102,7 @@ router.post('/construction/submit', requireRole('CONSTRUCTION'), async (req, res
       operatorName: req.user.name
     });
 
+    recalculateDemandDurations(demand);
     await demand.save();
     logger.info('施工提交', { demandId, constructionBy: req.user._id, status: demand.status });
     res.json({ code: 0, data: { status: demand.status } });
