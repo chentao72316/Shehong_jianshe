@@ -6,6 +6,7 @@ export interface UserInfo {
   id: string
   name: string
   phone: string
+  role?: Role
   roles: Role[]
   district?: string
   area: string
@@ -16,6 +17,8 @@ export interface UserInfo {
   staffType?: string
   active?: boolean
   passwordChanged?: boolean
+  canPcLogin?: boolean
+  pcRole?: Role
 }
 
 // 登录响应
@@ -28,6 +31,8 @@ export interface LoginResponse {
 export interface AdminOverview {
   total: number
   pending: number
+  designCount?: number
+  constructionCount?: number
   inProgress: number
   completed: number
   timeout: number
@@ -50,6 +55,7 @@ export type Urgency = '普通' | '紧急' | '特急'
 export interface Demand {
   id: string
   demandNo: string
+  district?: string
   acceptArea: string
   gridName?: string
   type: DemandType
@@ -70,6 +76,7 @@ export interface Demand {
   assignedSupervisor?: { name: string; phone: string } | string
   createdBy?: { name: string; phone: string } | string
   crossAreaReviewerId?: { name: string; phone: string } | string
+  confirmBy?: { name: string; phone: string } | string
   designAssignTime?: string
   constructionAssignTime?: string
   completedTime?: string
@@ -80,15 +87,28 @@ export interface Demand {
   photos?: string[]
   resourcePhotos?: string[]
   designFiles?: string[]
+  designRemark?: string
   constructionPhotos?: string[]
+  coverageName?: string
+  assetStatus?: '已生效' | '待生效' | '未生效' | string
   constructionLat?: number
   constructionLng?: number
   constructionLocationDetail?: string
+  constructionRemark?: string
+  supervisorPhotos?: string[]
+  supervisorRemark?: string
+  supervisorVerifyTime?: string
+  totalDuration?: number
+  designDuration?: number
+  constructionDuration?: number
+  timeoutDays?: number | null
+  remainingDays?: number | null
   createdAt?: string
   logs?: DemandLog[]
   rejectionReason?: string
   rejectCount?: number
   remark?: string
+  networkManager?: { name: string; phone: string } | string | null
 }
 
 export interface DemandLog {

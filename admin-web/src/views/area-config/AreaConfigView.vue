@@ -1,7 +1,7 @@
-<template>
+﻿<template>
   <div class="area-config-view">
     <el-card class="toolbar-card">
-      <el-button type="primary" @click="handleAdd">
+      <el-button v-if="canManageAreaConfig" type="primary" @click="handleAdd">
         <el-icon><Plus /></el-icon>新增区域配置
       </el-button>
       <span class="count-tip">共 {{ list.length }} 条区域配置</span>
@@ -63,8 +63,9 @@
         </el-table-column>
         <el-table-column label="操作" width="120" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+            <el-button v-if="canManageAreaConfig" type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
+            <span v-else class="text-placeholder">只读</span>
+            <el-button v-if="canManageAreaConfig" type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -74,7 +75,7 @@
     <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑区域配置' : '新增区域配置'" width="700px" :close-on-click-modal="false">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="110px" size="default">
         <el-form-item label="区县" prop="district">
-          <el-select v-model="form.district" style="width: 100%" :disabled="isEdit">
+          <el-select v-model="form.district" style="width: 100%" :disabled="isEdit || !userStore.isAdmin()">
             <el-option v-for="d in ['射洪市', '蓬溪县', '大英县', '船山区', '安居区']" :key="d" :label="d" :value="d" />
           </el-select>
         </el-form-item>
@@ -107,22 +108,20 @@
           <div class="form-tip">从已有配置中选择，或直接输入新名称</div>
         </el-form-item>
         <el-form-item label="设计候选人">
-          <div class="candidate-selector">
-            <el-select
-              v-model="form.designCandidates"
-              multiple
-              filterable
-              placeholder="请选择设计候选人（可多选）"
-              style="width: 100%"
-            >
-              <el-option
-                v-for="u in designStaff"
-                :key="u.id"
-                :label="`${u.name}（${u.phone}）`"
-                :value="u.id"
-              />
-            </el-select>
-          </div>
+          <el-select
+            v-model="form.designCandidates"
+            multiple
+            filterable
+            placeholder="请选择设计候选人（可多选）"
+            style="width: 100%"
+          >
+            <el-option
+              v-for="u in designStaff"
+              :key="u.id"
+              :label="`${u.name}（${u.phone}）`"
+              :value="u.id"
+            />
+          </el-select>
         </el-form-item>
         <el-form-item label="施工候选人">
           <el-select
@@ -178,7 +177,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+        <el-button v-if="canManageAreaConfig" type="primary" :loading="saving" @click="handleSave">保存</el-button>
       </template>
     </el-dialog>
   </div>
@@ -191,8 +190,11 @@ import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'elem
 import { Plus } from '@element-plus/icons-vue'
 import type { AreaConfig, StaffMember } from '@/types'
 import { useDistrictStore } from '@/stores/district'
+import { useUserStore } from '@/stores/user'
 
 const districtStore = useDistrictStore()
+const userStore = useUserStore()
+const canManageAreaConfig = userStore.hasAnyRole(['ADMIN', 'DISTRICT_MANAGER'])
 
 const loading = ref(false)
 const saving = ref(false)
@@ -245,12 +247,13 @@ const loadList = async () => {
 }
 
 const loadStaffOptions = async () => {
+  const district = districtStore.apiDistrict ?? undefined
   const [d, c, s, n, distinct] = await Promise.all([
-    getStaffList({ role: 'DESIGN', pageSize: 200 }),
-    getStaffList({ role: 'CONSTRUCTION', pageSize: 200 }),
-    getStaffList({ role: 'SUPERVISOR', pageSize: 200 }),
-    getStaffList({ role: 'NETWORK_MANAGER', pageSize: 200 }),
-    getStaffDistinct()
+    getStaffList({ role: 'DESIGN', pageSize: 200, district }),
+    getStaffList({ role: 'CONSTRUCTION', pageSize: 200, district }),
+    getStaffList({ role: 'SUPERVISOR', pageSize: 200, district }),
+    getStaffList({ role: 'NETWORK_MANAGER', pageSize: 200, district }),
+    getStaffDistinct({ district })
   ])
   designStaff.value = d.list
   constructionStaff.value = c.list
@@ -337,6 +340,7 @@ onMounted(() => {
 // 区县切换时刷新列表
 watch(() => districtStore.apiDistrict, () => {
   loadList()
+  loadStaffOptions()
 })
 </script>
 

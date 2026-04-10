@@ -28,7 +28,7 @@ router.get('/stats/grid', requireRole('GRID_MANAGER', 'NETWORK_MANAGER', 'LEVEL4
       matchStage.gridName = req.user.gridName;
     } else if (roles.includes('NETWORK_MANAGER') && !roles.includes('ADMIN')) {
       matchStage.acceptArea = req.user.area;
-    } else if ((roles.includes('DEPT_MANAGER') || roles.includes('LEVEL4_MANAGER')) &&
+    } else if (roles.includes('DEPT_MANAGER') &&
                !roles.includes('ADMIN') && !roles.includes('DISTRICT_MANAGER')) {
       if (req.user.gridName && !req.user.gridName.includes('网络建设中心')) {
         matchStage.$or = [{ gridName: req.user.gridName }, { acceptArea: req.user.gridName }];
@@ -124,7 +124,7 @@ router.get('/stats/area', requireRole('GRID_MANAGER', 'NETWORK_MANAGER', 'LEVEL4
     const matchStage = { createdAt: { $gte: startDate }, ...getDistrictFilter(req) };
     if (roles.includes('NETWORK_MANAGER') && !roles.includes('ADMIN')) {
       matchStage.acceptArea = req.user.area;
-    } else if ((roles.includes('DEPT_MANAGER') || roles.includes('LEVEL4_MANAGER')) &&
+    } else if (roles.includes('DEPT_MANAGER') &&
                !roles.includes('ADMIN') && !roles.includes('DISTRICT_MANAGER')) {
       if (req.user.gridName && !req.user.gridName.includes('网络建设中心')) {
         matchStage.$or = [{ gridName: req.user.gridName }, { acceptArea: req.user.gridName }];
@@ -222,7 +222,7 @@ router.get('/stats/status-summary', requireRole('GRID_MANAGER', 'NETWORK_MANAGER
     const matchStage = { createdAt: { $gte: startDate }, ...getDistrictFilter(req) };
     if (roles.includes('NETWORK_MANAGER') && !roles.includes('ADMIN')) {
       matchStage.acceptArea = req.user.area;
-    } else if ((roles.includes('DEPT_MANAGER') || roles.includes('LEVEL4_MANAGER')) &&
+    } else if (roles.includes('DEPT_MANAGER') &&
                !roles.includes('ADMIN') && !roles.includes('DISTRICT_MANAGER')) {
       if (req.user.gridName && !req.user.gridName.includes('网络建设中心')) {
         matchStage.$or = [{ gridName: req.user.gridName }, { acceptArea: req.user.gridName }];

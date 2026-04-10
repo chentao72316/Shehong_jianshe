@@ -1,4 +1,9 @@
-const { getMessageList, markMessageRead } = require('../../utils/api');
+const {
+  getMessageList,
+  markMessageRead,
+  archiveMessage,
+  archiveAllMessages
+} = require('../../utils/api');
 const { formatTime } = require('../../utils/time');
 
 Page({
@@ -8,7 +13,8 @@ Page({
     hasMore: true,
     page: 1,
     pageSize: 20,
-    unreadCount: 0
+    unreadCount: 0,
+    clearableCount: 0
   },
 
   onLoad() {
@@ -34,13 +40,18 @@ Page({
       const res = await getMessageList({ page: this.data.page, pageSize: this.data.pageSize });
       const messages = res.data.list.map(item => ({
         ...item,
+        id: item.id || item._id,
+        demandId: item.demandId || '',
+        announcementId: item.announcementId || '',
         timeStr: formatTime(item.createdAt)
       }));
+      const mergedMessages = reset ? messages : [...this.data.messages, ...messages];
       this.setData({
-        messages: reset ? messages : [...this.data.messages, ...messages],
+        messages: mergedMessages,
         unreadCount: res.data.unreadCount || 0,
         hasMore: messages.length === this.data.pageSize,
         page: this.data.page + 1,
+        clearableCount: mergedMessages.filter(item => item.type !== 'system').length,
         loading: false
       });
     } catch {
@@ -49,21 +60,70 @@ Page({
   },
 
   async onTapMessage(e) {
-    const { id, demandId, read, type } = e.currentTarget.dataset;
-    if (!read) {
-      await markMessageRead({ id });
+    const { id, demandId, demandNo, announcementId, read, type } = e.currentTarget.dataset;
+    try {
+      if (!read) {
+        await markMessageRead({ id });
+      }
+    } catch {
+      wx.showToast({ title: '消息状态更新失败', icon: 'none' });
+      return;
     }
+
     if (type === 'system') {
-      // demandNo 字段存的是公告 ID（服务端创建时写入）
-      const annId = e.currentTarget.dataset.demandNo;
-      if (annId) {
-        wx.navigateTo({ url: `/pages/announcement-detail/announcement-detail?id=${annId}` });
+      if (!read) {
+        this.setData({
+          messages: this.data.messages.map(item => (item.id === id ? { ...item, read: true } : item)),
+          unreadCount: Math.max(0, this.data.unreadCount - 1)
+        });
+      }
+      const targetAnnouncementId = announcementId || demandNo;
+      if (targetAnnouncementId) {
+        wx.navigateTo({ url: `/pages/announcement-detail/announcement-detail?id=${targetAnnouncementId}` });
       }
       return;
     }
+
+    try {
+      await archiveMessage({ id });
+    } catch {
+      wx.showToast({ title: '消息归档失败', icon: 'none' });
+      return;
+    }
+
+    const remainingMessages = this.data.messages.filter(item => item.id !== id);
+    this.setData({
+      messages: remainingMessages,
+      unreadCount: read ? this.data.unreadCount : Math.max(0, this.data.unreadCount - 1),
+      clearableCount: remainingMessages.filter(item => item.type !== 'system').length
+    });
+
     if (demandId) {
       wx.navigateTo({ url: `/pages/demand-detail/demand-detail?id=${demandId}` });
     }
+  },
+
+  onTapClear() {
+    if (!this.data.clearableCount) return;
+
+    wx.showModal({
+      title: '清空非公告消息',
+      content: '将清空当前账号所有非公告消息，公告会保留。',
+      confirmText: '清空',
+      success: async (res) => {
+        if (!res.confirm) return;
+        wx.showLoading({ title: '清理中...' });
+        try {
+          await archiveAllMessages();
+          await this.loadMessages(true);
+          wx.showToast({ title: '已清空', icon: 'success' });
+        } catch {
+          wx.showToast({ title: '清空失败', icon: 'none' });
+        } finally {
+          wx.hideLoading();
+        }
+      }
+    });
   },
 
   onReachBottom() {

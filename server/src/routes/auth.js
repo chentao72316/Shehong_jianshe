@@ -6,6 +6,7 @@ const { rateLimitLogin, recordFailedLogin, resetFailedLogin } = require('../midd
 const User = require('../models/user.model');
 const { createError } = require('../middleware/error-handler');
 const { logger } = require('../utils/logger');
+const { canPcLogin, getPrimaryRole } = require('../utils/pc-access');
 
 const router = express.Router();
 
@@ -15,6 +16,7 @@ const router = express.Router();
  * 获取登录后的响应数据
  */
 function buildLoginResponse(user, extraData = {}) {
+  const primaryRole = getPrimaryRole(user);
   const token = jwt.sign(
     { userId: user._id, phone: user.phone, role: user.roles[0] || null, roles: user.roles },
     process.env.JWT_SECRET,
@@ -28,12 +30,15 @@ function buildLoginResponse(user, extraData = {}) {
         id: String(user._id),
         name: user.name,
         phone: user.phone,
-        role: user.roles[0] || null,
+        role: primaryRole,
         roles: user.roles,
+        district: user.district,
         area: user.area,
         gridName: user.gridName,
         feishuId: user.feishuId,
         passwordChanged: user.passwordChanged || false,
+        canPcLogin: canPcLogin(user),
+        pcRole: primaryRole,
         ...extraData
       }
     }
@@ -312,8 +317,11 @@ router.get('/user/role', authenticate, async (req, res) => {
         id: String(req.user._id),
         name: req.user.name,
         phone: req.user.phone,
+        district: req.user.district,
         area: req.user.area,
         gridName: req.user.gridName,
+        canPcLogin: canPcLogin(req.user),
+        pcRole: getPrimaryRole(req.user),
         passwordChanged: req.user.passwordChanged || false
       }
     }
@@ -325,7 +333,7 @@ router.get('/user/role', authenticate, async (req, res) => {
  * 管理员重置用户密码（仅 ADMIN 角色）
  * Body: { userId: string, newPassword: string }
  */
-router.post('/auth/reset-password', authenticate, requireRole('ADMIN'), async (req, res, next) => {
+router.post('/auth/reset-password', authenticate, requireRole('ADMIN', 'DISTRICT_MANAGER'), async (req, res, next) => {
   try {
     const { userId, newPassword } = req.body;
     if (!userId) throw createError(400, '缺少 userId 参数');
@@ -337,6 +345,13 @@ router.post('/auth/reset-password', authenticate, requireRole('ADMIN'), async (r
 
     const user = await User.findById(userId);
     if (!user) throw createError(404, '用户不存在');
+    const isAdmin = (req.user.roles || []).includes('ADMIN');
+    if (!isAdmin) {
+      if ((user.roles || []).includes('ADMIN')) throw createError(403, '无权限重置管理员密码');
+      if ((user.district || '射洪市') !== (req.user.district || '射洪市')) {
+        throw createError(403, '仅可重置本区县人员密码');
+      }
+    }
 
     user.password = await hashPassword(newPassword);
     // 管理员重置后，用户下次登录不需要强制修改（因为已经是新密码了）

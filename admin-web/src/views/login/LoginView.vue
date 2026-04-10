@@ -85,6 +85,7 @@ import { useUserStore } from '@/stores/user'
 import { phonePasswordLogin } from '@/api/auth'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
+import { getDefaultHomePath } from '@/utils/pc-access'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -111,9 +112,13 @@ const handleLogin = async () => {
     loading.value = true
     try {
       const data = await phonePasswordLogin(form.phone, form.password)
+      if (!data.userInfo.canPcLogin) {
+        ElMessage.error('当前角色暂不支持 PC 端登录')
+        return
+      }
       userStore.setUser(data.userInfo, data.token)
       ElMessage.success('登录成功')
-      router.push('/dashboard')
+      router.push(getDefaultHomePath(data.userInfo))
     } catch (error: any) {
       console.error(error)
     } finally {

@@ -12,6 +12,7 @@ export async function getDemandList(params: {
   dateFrom?: string
   dateTo?: string
   district?: string
+  overdueOnly?: boolean
 }): Promise<{ list: Demand[]; total: number; stats?: any }> {
   const data = await request.get<{ list: Demand[]; total: number; stats?: any }>('/demand/list', { params })
   return data as unknown as { list: Demand[]; total: number; stats?: any }
@@ -33,6 +34,37 @@ export async function deleteDemand(id: string): Promise<void> {
   await request.delete(`/demand/${id}`)
 }
 
+export async function submitDesign(data: {
+  demandId: string
+  hasResource: boolean
+  resourceName?: string
+  resourcePhotos?: string[]
+  designFiles?: string[]
+  remark?: string
+}): Promise<void> {
+  await request.post('/design/submit', data)
+}
+
+export async function submitConstruction(data: {
+  demandId: string
+  coverageName: string
+  assetStatus: string
+  location?: { latitude: number; longitude: number } | null
+  constructionLocationDetail?: string
+  photos?: string[]
+  remark?: string
+}): Promise<void> {
+  await request.post('/construction/submit', data)
+}
+
+export async function submitSupervisor(data: {
+  demandId: string
+  photos?: string[]
+  remark?: string
+}): Promise<void> {
+  await request.post('/supervisor/submit', data)
+}
+
 // 导出工单为 Excel（触发浏览器文件下载）
 export async function exportDemands(params: {
   keyword?: string
@@ -42,11 +74,12 @@ export async function exportDemands(params: {
   dateFrom?: string
   dateTo?: string
   district?: string
+  overdueOnly?: boolean
 }): Promise<void> {
   const query = new URLSearchParams()
   Object.entries(params).forEach(([k, v]) => {
     if (!v) return
-    query.append(k, Array.isArray(v) ? v.join(',') : v)
+    query.append(k, Array.isArray(v) ? v.join(',') : String(v))
   })
   const token = localStorage.getItem('token')
   const res = await fetch(`/api/admin/demands/export?${query.toString()}`, {

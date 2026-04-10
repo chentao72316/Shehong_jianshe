@@ -1,6 +1,14 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user'
+import type { Role } from '@/types'
+import { getDefaultHomePath } from '@/utils/pc-access'
+
+type AppRouteMeta = {
+  requiresAuth?: boolean
+  allowedRoles?: Role[]
+  devOnly?: boolean
+}
 
 const routes: RouteRecordRaw[] = [
   {
@@ -12,56 +20,65 @@ const routes: RouteRecordRaw[] = [
   {
     path: '/',
     component: () => import('@/components/layout/AdminLayout.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true },
+    meta: { requiresAuth: true } as AppRouteMeta,
     children: [
       {
         path: '',
-        redirect: '/dashboard'
+        redirect: '/demands'
       },
       {
         path: 'dashboard',
         name: 'Dashboard',
-        component: () => import('@/views/dashboard/DashboardView.vue')
+        component: () => import('@/views/dashboard/DashboardView.vue'),
+        meta: { allowedRoles: ['ADMIN', 'DISTRICT_MANAGER', 'LEVEL4_MANAGER', 'NETWORK_MANAGER'] } as AppRouteMeta
       },
       {
         path: 'staff',
         name: 'Staff',
-        component: () => import('@/views/staff/StaffView.vue')
+        component: () => import('@/views/staff/StaffView.vue'),
+        meta: { allowedRoles: ['ADMIN', 'DISTRICT_MANAGER', 'LEVEL4_MANAGER'] } as AppRouteMeta
       },
       {
         path: 'demands',
         name: 'Demands',
-        component: () => import('@/views/demands/DemandListView.vue')
+        component: () => import('@/views/demands/DemandListView.vue'),
+        meta: { allowedRoles: ['ADMIN', 'DISTRICT_MANAGER', 'LEVEL4_MANAGER', 'NETWORK_MANAGER', 'DESIGN', 'CONSTRUCTION', 'SUPERVISOR'] } as AppRouteMeta
       },
       {
         path: 'timeout',
         name: 'Timeout',
-        component: () => import('@/views/timeout/TimeoutView.vue')
+        component: () => import('@/views/timeout/TimeoutView.vue'),
+        meta: { allowedRoles: ['ADMIN', 'DISTRICT_MANAGER', 'LEVEL4_MANAGER', 'NETWORK_MANAGER'] } as AppRouteMeta
       },
       {
         path: 'stats',
         name: 'Stats',
-        component: () => import('@/views/stats/StatsView.vue')
+        component: () => import('@/views/stats/StatsView.vue'),
+        meta: { allowedRoles: ['ADMIN', 'DISTRICT_MANAGER', 'LEVEL4_MANAGER', 'NETWORK_MANAGER'] } as AppRouteMeta
       },
       {
         path: 'config',
         name: 'Config',
-        component: () => import('@/views/config/ConfigView.vue')
+        component: () => import('@/views/config/ConfigView.vue'),
+        meta: { allowedRoles: ['ADMIN'] } as AppRouteMeta
       },
       {
         path: 'area-config',
         name: 'AreaConfig',
-        component: () => import('@/views/area-config/AreaConfigView.vue')
+        component: () => import('@/views/area-config/AreaConfigView.vue'),
+        meta: { allowedRoles: ['ADMIN', 'DISTRICT_MANAGER', 'LEVEL4_MANAGER'] } as AppRouteMeta
       },
       {
         path: 'role-config',
         name: 'RoleConfig',
-        component: () => import('@/views/role-config/RoleConfigView.vue')
+        component: () => import('@/views/role-config/RoleConfigView.vue'),
+        meta: { allowedRoles: ['ADMIN'] } as AppRouteMeta
       },
       {
         path: 'announcement',
         name: 'Announcement',
-        component: () => import('@/views/announcement/AnnouncementView.vue')
+        component: () => import('@/views/announcement/AnnouncementView.vue'),
+        meta: { allowedRoles: ['ADMIN', 'DISTRICT_MANAGER', 'LEVEL4_MANAGER', 'NETWORK_MANAGER', 'DESIGN', 'CONSTRUCTION', 'SUPERVISOR'] } as AppRouteMeta
       },
       // DEV-ONLY: 测试面板，上线前删除
       ...(import.meta.env.DEV ? [{
@@ -87,16 +104,20 @@ const router = createRouter({
 router.beforeEach((to, _from, next) => {
   const userStore = useUserStore()
   userStore.loadFromStorage()
+  const routeMeta = to.meta as AppRouteMeta
+  const defaultHomePath = getDefaultHomePath(userStore.userInfo)
 
-  if (to.meta.requiresAuth && !userStore.token) {
+  if (routeMeta.requiresAuth && !userStore.token) {
     next('/login')
   } else if (to.path === '/login' && userStore.token) {
-    next('/dashboard')
-  } else if (to.meta.requiresAdmin && !userStore.isAdmin()) {
-    // 无论是否有 token，非管理员一律跳回登录页，避免无限重定向
+    next(defaultHomePath)
+  } else if (userStore.token && !userStore.canPcLogin()) {
     userStore.logout()
-    ElMessage.error('仅管理员可访问，请使用管理员账号登录')
+    ElMessage.error('当前角色不支持 PC 端登录')
     next('/login')
+  } else if (routeMeta.allowedRoles && routeMeta.allowedRoles.length > 0 && !userStore.hasAnyRole(routeMeta.allowedRoles)) {
+    ElMessage.error('当前角色无权访问该页面')
+    next(defaultHomePath)
   } else {
     next()
   }

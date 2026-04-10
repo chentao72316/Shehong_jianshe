@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const Demand = require('../models/demand.model');
 const User = require('../models/user.model');
 const Counter = require('../models/counter.model');
@@ -12,6 +12,13 @@ const { broadcastDemandUpdate } = require('../utils/websocket');
 const { sendAssignMessages, sendStatusChangeMessages, sendRejectMessage } = require('../utils/msgHelper');
 const { getDistrictFilter } = require('../utils/district');
 const { inferCompletionMode, getCompletionModeLabel } = require('../utils/completion-mode');
+const { buildNetworkManagerDemandFilter, canNetworkManagerAccessDemand, mergeFilter } = require('../utils/network-manager-scope');
+const {
+  ROLE_PRIORITY,
+  getDemandVisibilityScope,
+  getAssignedOrProcessedDemandFilter,
+  canAccessAssignedDemand
+} = require('../utils/pc-access');
 
 const router = express.Router();
 
@@ -65,12 +72,12 @@ function pickFirstActive(populatedList) {
  * 建维中心人员（gridName 含"网络建设中心"）强制 'all'
  */
 async function resolveVisibilityScope(user) {
+  const explicitScope = getDemandVisibilityScope(user);
+  if (explicitScope) return explicitScope;
   if (user.gridName && user.gridName.includes('网络建设中心')) return 'all';
 
   const roles = user.roles || [];
-  // 优先级：ADMIN > GRID_MANAGER > NETWORK_MANAGER > LEVEL4_MANAGER > DISTRICT_MANAGER > DEPT_MANAGER > DESIGN/CONSTRUCTION/SUPERVISOR > FRONTLINE
-  const PRIORITY = ['ADMIN', 'GRID_MANAGER', 'NETWORK_MANAGER', 'LEVEL4_MANAGER', 'DISTRICT_MANAGER', 'DEPT_MANAGER', 'DESIGN', 'CONSTRUCTION', 'SUPERVISOR', 'FRONTLINE'];
-  const primaryRole = PRIORITY.find(r => roles.includes(r)) || roles[0];
+  const primaryRole = ROLE_PRIORITY.find((role) => roles.includes(role)) || roles[0];
   if (!primaryRole) return 'self';
 
   const config = await RoleConfig.findOne({ role: primaryRole }).lean();
@@ -298,7 +305,7 @@ router.post('/demand/update', async (req, res, next) => {
  */
 router.get('/demand/list', async (req, res, next) => {
   try {
-    const { page = 1, pageSize = 20, status, type, keyword, area, dateFrom, dateTo } = req.query;
+    const { page = 1, pageSize = 20, status, type, keyword, area, dateFrom, dateTo, overdueOnly } = req.query;
     const { page: p, pageSize: ps } = parsePagination(page, pageSize);
     const query = {};
 
@@ -311,8 +318,12 @@ router.get('/demand/list', async (req, res, next) => {
         Object.assign(query, getDistrictFilter(req));
         if (area) query.acceptArea = area;
         break;
+      case 'district':
+        Object.assign(query, getDistrictFilter(req));
+        if (area) query.acceptArea = area;
+        break;
       case 'area':
-        query.acceptArea = req.user.area;
+        Object.assign(query, await buildNetworkManagerDemandFilter(req.user));
         break;
       case 'grid':
         // 网格经理：看自己网格提交的工单 + 受理区域在自己网格的跨区域工单
@@ -325,17 +336,7 @@ router.get('/demand/list', async (req, res, next) => {
         query.createdBy = req.user._id;
         break;
       case 'assigned': {
-        // 按具体角色确定指派字段，不强制 status（由前端筛选器控制）
-        const roles = req.user.roles || [];
-        if (roles.includes('DESIGN')) {
-          query.assignedDesignUnit = req.user._id;
-        } else if (roles.includes('CONSTRUCTION')) {
-          query.assignedConstructionUnit = req.user._id;
-        } else if (roles.includes('SUPERVISOR')) {
-          query.assignedSupervisor = req.user._id;
-        } else {
-          query.createdBy = req.user._id;
-        }
+        Object.assign(query, getAssignedOrProcessedDemandFilter(req.user));
         break;
       }
       default:
@@ -404,6 +405,24 @@ router.get('/demand/list', async (req, res, next) => {
       }
     }
 
+    if (String(overdueOnly) === '1' || String(overdueOnly).toLowerCase() === 'true') {
+      const designTimeoutCutoff = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+      const constructionTimeoutCutoff = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
+      const overdueFilter = {
+        $or: [
+          { status: '设计中', designAssignTime: { $lte: designTimeoutCutoff } },
+          { status: '施工中', constructionAssignTime: { $lte: constructionTimeoutCutoff } }
+        ]
+      };
+
+      if (query.$or) {
+        query.$and = [...(query.$and || []), { $or: query.$or }, overdueFilter];
+        delete query.$or;
+      } else {
+        query.$and = [...(query.$and || []), overdueFilter];
+      }
+    }
+
     const [list, total] = await Promise.all([
       Demand.find(query)
         .sort({ createdAt: -1 })
@@ -449,9 +468,10 @@ router.get('/demand/list', async (req, res, next) => {
           { completionMode: { $in: [null, ''] }, $or: [{ constructionAssignTime: { $exists: true, $ne: null } }, { coverageName: { $nin: [null, ''] } }] }
         ]
       });
+      const pendingStatus = (req.user.roles || []).includes('NETWORK_MANAGER') ? '待确认' : '待审核';
       const [statsTotal, pending, designing, constructing, waitingConfirm, done, timeout, existingResourceDone, constructionBuildDone] = await Promise.all([
         Demand.countDocuments(entityFilter),
-        Demand.countDocuments({ ...entityFilter, status: '待审核' }),
+        Demand.countDocuments(withExtraFilter(entityFilter, { status: pendingStatus })),
         Demand.countDocuments({ ...entityFilter, status: '设计中' }),
         Demand.countDocuments({ ...entityFilter, status: '施工中' }),
         Demand.countDocuments({ ...entityFilter, status: '待确认' }),
@@ -460,13 +480,16 @@ router.get('/demand/list', async (req, res, next) => {
         Demand.countDocuments(existingResourceFilter),
         Demand.countDocuments(constructionBuildFilter)
       ]);
+      const inProgressCount = (req.user.roles || []).includes('NETWORK_MANAGER')
+        ? designing + constructing
+        : pending + designing + constructing;
       stats = {
         total: statsTotal,
         pending,
         designing,
         constructing,
         waitingConfirm,
-        inProgress: pending + designing + constructing,
+        inProgress: inProgressCount,
         done,
         existingResourceDone,
         constructionBuildDone,
@@ -474,11 +497,25 @@ router.get('/demand/list', async (req, res, next) => {
       };
     }
 
+    const now = Date.now();
     const mappedList = list.map(item => {
+      let timeoutDays = null;
+      let remainingDays = null;
+      if (item.status === '设计中' && item.designAssignTime) {
+        const elapsed = Math.floor((now - new Date(item.designAssignTime)) / 86400000);
+        remainingDays = 2 - elapsed;
+        timeoutDays = elapsed > 2 ? elapsed - 2 : null;
+      } else if (item.status === '施工中' && item.constructionAssignTime) {
+        const elapsed = Math.floor((now - new Date(item.constructionAssignTime)) / 86400000);
+        remainingDays = 5 - elapsed;
+        timeoutDays = elapsed > 5 ? elapsed - 5 : null;
+      }
       const completionMode = inferCompletionMode(item);
       return {
         ...item,
         id: String(item._id),
+        timeoutDays,
+        remainingDays,
         completionMode,
         completionModeLabel: getCompletionModeLabel(completionMode)
       };
@@ -516,8 +553,11 @@ router.get('/demand/detail', async (req, res, next) => {
       const creatorId = String(demand.createdBy?._id || demand.createdBy || '');
 
       switch (scope) {
+        case 'district':
+          hasAccess = !demand.district || !req.user.district || demand.district === req.user.district;
+          break;
         case 'area':
-          hasAccess = demand.acceptArea === req.user.area;
+          hasAccess = await canNetworkManagerAccessDemand(req.user, demand);
           break;
         case 'grid':
           hasAccess = demand.gridName === req.user.gridName || demand.acceptArea === req.user.gridName;
@@ -526,15 +566,7 @@ router.get('/demand/detail', async (req, res, next) => {
           hasAccess = creatorId === userId;
           break;
         case 'assigned': {
-          const designId = String(demand.assignedDesignUnit?._id || demand.assignedDesignUnit || '');
-          const constructionId = String(demand.assignedConstructionUnit?._id || demand.assignedConstructionUnit || '');
-          const supervisorId = String(demand.assignedSupervisor?._id || demand.assignedSupervisor || '');
-          if (roles.includes('DESIGN')) hasAccess = designId === userId;
-          else if (roles.includes('CONSTRUCTION')) hasAccess = constructionId === userId;
-          else if (roles.includes('SUPERVISOR')) hasAccess = supervisorId === userId;
-          else hasAccess = creatorId === userId;
-          // 创建人本人也可查看
-          if (!hasAccess) hasAccess = creatorId === userId;
+          hasAccess = canAccessAssignedDemand(req.user, demand);
           break;
         }
         default:
@@ -776,16 +808,18 @@ router.get('/demand/pending', async (req, res, next) => {
   try {
     const scope = await resolveVisibilityScope(req.user);
     const roles = req.user.roles || [];
-    const PRIORITY = ['ADMIN', 'GRID_MANAGER', 'NETWORK_MANAGER', 'LEVEL4_MANAGER', 'DISTRICT_MANAGER', 'DEPT_MANAGER', 'DESIGN', 'CONSTRUCTION', 'SUPERVISOR', 'FRONTLINE'];
-    const primaryRole = PRIORITY.find(r => roles.includes(r)) || roles[0] || 'FRONTLINE';
+    const primaryRole = ROLE_PRIORITY.find((role) => roles.includes(role)) || roles[0] || 'FRONTLINE';
 
     // 构建基础实体范围过滤（与 list 路由一致）
     const entityFilter = {};
     switch (scope) {
       case 'all':
         break;
+      case 'district':
+        Object.assign(entityFilter, getDistrictFilter(req));
+        break;
       case 'area':
-        entityFilter.acceptArea = req.user.area;
+        Object.assign(entityFilter, await buildNetworkManagerDemandFilter(req.user));
         break;
       case 'grid':
         entityFilter.$or = [
@@ -797,15 +831,7 @@ router.get('/demand/pending', async (req, res, next) => {
         entityFilter.createdBy = req.user._id;
         break;
       case 'assigned':
-        if (roles.includes('DESIGN')) {
-          entityFilter.assignedDesignUnit = req.user._id;
-        } else if (roles.includes('CONSTRUCTION')) {
-          entityFilter.assignedConstructionUnit = req.user._id;
-        } else if (roles.includes('SUPERVISOR')) {
-          entityFilter.assignedSupervisor = req.user._id;
-        } else {
-          entityFilter.createdBy = req.user._id;
-        }
+        Object.assign(entityFilter, getAssignedOrProcessedDemandFilter(req.user));
         break;
       default:
         entityFilter.createdBy = req.user._id;
@@ -835,12 +861,12 @@ router.get('/demand/pending', async (req, res, next) => {
         CONSTRUCTION:    ['施工中'],
         SUPERVISOR:      ['待审核', '设计中', '施工中', '待确认', '已开通'],
         GRID_MANAGER:    ['待审核'],
-        NETWORK_MANAGER: ['待审核', '待确认'],
+        NETWORK_MANAGER: ['待确认'],
       };
       const statuses = statusFilterMap[primaryRole] || ['待审核', '设计中', '施工中', '待确认'];
       // FRONTLINE 已驳回工单中已确认的不再出现在待办列表
       const extraFilter = primaryRole === 'FRONTLINE' ? { rejectionAcknowledged: { $ne: true } } : {};
-      query = { ...entityFilter, status: { $in: statuses }, ...extraFilter };
+      query = mergeFilter(entityFilter, { status: { $in: statuses }, ...extraFilter });
     }
 
     const list = await Demand.find(query)

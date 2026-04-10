@@ -8,18 +8,20 @@ const { requireRole } = require('../middleware/auth');
 const { logger } = require('../utils/logger');
 const { fmtDate, fmtDuration } = require('../utils/format');
 const { getDistrictFilter, getDistrictFromBody } = require('../utils/district');
+const { getAssignedOrProcessedDemandFilter } = require('../utils/pc-access');
+const { buildNetworkManagerDemandFilter, mergeFilter } = require('../utils/network-manager-scope');
 
 const router = express.Router();
 
 /**
- * 转义正则特殊字符，防止 ReDoS
+ * 杞箟姝ｅ垯鐗规畩瀛楃锛岄槻姝?ReDoS
  */
 function escapeRegex(str) {
   return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**
- * 解析并约束分页参数
+ * 瑙ｆ瀽骞剁害鏉熷垎椤靛弬鏁?
  */
 function parsePagination(page, pageSize) {
   const p = Math.max(1, Number(page) || 1);
@@ -28,26 +30,49 @@ function parsePagination(page, pageSize) {
 }
 
 const VALID_ROLES = ['FRONTLINE', 'DISTRICT_MANAGER', 'DEPT_MANAGER', 'LEVEL4_MANAGER', 'DESIGN', 'CONSTRUCTION', 'SUPERVISOR', 'ADMIN', 'GRID_MANAGER', 'NETWORK_MANAGER'];
+const STAFF_VIEW_ROLES = ['ADMIN', 'DISTRICT_MANAGER', 'LEVEL4_MANAGER'];
+const STAFF_MANAGE_ROLES = ['ADMIN', 'DISTRICT_MANAGER'];
+const DISTRICT_ASSIGNABLE_ROLES = VALID_ROLES.filter((role) => role !== 'ADMIN');
 
-// 角色代码到中文名称映射
 const roleCodeToName = {
-  'FRONTLINE': '一线人员',
-  'DISTRICT_MANAGER': '区县经理',
-  'DEPT_MANAGER': '部门经理',
-  'LEVEL4_MANAGER': '四级经理',
-  'GRID_MANAGER': '网格经理',
-  'NETWORK_MANAGER': '网络支撑经理',
-  'DESIGN': '设计',
-  'CONSTRUCTION': '施工',
-  'SUPERVISOR': '监理',
-  'ADMIN': '管理员'
+  FRONTLINE: '一线人员',
+  DISTRICT_MANAGER: '区县管理员',
+  DEPT_MANAGER: '部门经理',
+  LEVEL4_MANAGER: '四级经理',
+  GRID_MANAGER: '网格经理',
+  NETWORK_MANAGER: '网络支撑经理',
+  DESIGN: '设计',
+  CONSTRUCTION: '施工',
+  SUPERVISOR: '监理',
+  ADMIN: '管理员'
 };
+
+function isAdminUser(req) {
+  return (req.user?.roles || []).includes('ADMIN');
+}
+
+function assertSameDistrict(req, district) {
+  if (isAdminUser(req)) return;
+  if ((req.user?.district || '射洪市') !== (district || '射洪市')) {
+    throw createError(403, '仅可操作本区县数据');
+  }
+}
+
+async function getScopedUserOrThrow(req, userId) {
+  const user = await User.findById(userId);
+  if (!user) throw createError(404, '用户不存在');
+  assertSameDistrict(req, user.district);
+  if (!isAdminUser(req) && (user.roles || []).includes('ADMIN')) {
+    throw createError(403, '鏃犳潈闄愭搷浣滅鐞嗗憳璐﹀彿');
+  }
+  return user;
+}
 
 /**
  * GET /api/admin/staff
- * 获取人员配置列表
+ * 鑾峰彇浜哄憳閰嶇疆鍒楄〃
  */
-router.get('/admin/staff', requireRole('ADMIN'), async (req, res, next) => {
+router.get('/admin/staff', requireRole(...STAFF_VIEW_ROLES), async (req, res, next) => {
   try {
     const { page = 1, pageSize = 20, role, keyword } = req.query;
     const { page: p, pageSize: ps } = parsePagination(page, pageSize);
@@ -62,7 +87,7 @@ router.get('/admin/staff', requireRole('ADMIN'), async (req, res, next) => {
         { phone: { $regex: safeKeyword } }
       ];
     }
-    // 区县过滤
+    // 鍖哄幙杩囨护
     Object.assign(query, getDistrictFilter(req));
 
     const [total, list] = await Promise.all([
@@ -75,7 +100,7 @@ router.get('/admin/staff', requireRole('ADMIN'), async (req, res, next) => {
         .lean()
     ]);
 
-    // 把 _id 映射为 id，方便前端直接使用
+    // 鎶?_id 鏄犲皠涓?id锛屾柟渚垮墠绔洿鎺ヤ娇鐢?
     const result = list.map(u => ({ ...u, id: String(u._id), _id: undefined }));
 
     res.json({ code: 0, data: { total, list: result } });
@@ -86,9 +111,9 @@ router.get('/admin/staff', requireRole('ADMIN'), async (req, res, next) => {
 
 /**
  * POST /api/admin/staff/save
- * 新增或更新人员（按phone唯一）
+ * 鏂板鎴栨洿鏂颁汉鍛橈紙鎸塸hone鍞竴锛?
  */
-router.post('/admin/staff/save', requireRole('ADMIN'), async (req, res, next) => {
+router.post('/admin/staff/save', requireRole(...STAFF_MANAGE_ROLES), async (req, res, next) => {
   try {
     const { userId, name, phone, roles, area, gridName, feishuId, wxAccount, employeeId, staffType, active } = req.body;
 
@@ -96,15 +121,17 @@ router.post('/admin/staff/save', requireRole('ADMIN'), async (req, res, next) =>
     if (!/^1[3-9]\d{9}$/.test(phone)) throw createError(400, '手机号格式不正确');
     if (!roles || !roles.length) throw createError(400, '至少选择一个角色');
     const invalidRoles = roles.filter(r => !VALID_ROLES.includes(r));
-    if (invalidRoles.length) throw createError(400, `无效角色: ${invalidRoles.join(', ')}`);
+    if (invalidRoles.length) throw createError(400, `存在无效角色: ${invalidRoles.join(', ')}`);
+    if (!isAdminUser(req)) {
+      const forbiddenRoles = roles.filter((role) => !DISTRICT_ASSIGNABLE_ROLES.includes(role));
+      if (forbiddenRoles.length) throw createError(403, `区县管理员不可分配这些角色: ${forbiddenRoles.join(', ')}`);
+    }
 
     let user;
     if (userId) {
-      user = await User.findById(userId);
-      if (!user) throw createError(404, '用户不存在');
-      // 检查手机号是否被其他人占用
+      user = await getScopedUserOrThrow(req, userId);
       const existing = await User.findOne({ phone, _id: { $ne: userId } });
-      if (existing) throw createError(409, '该手机号已被其他账号使用');
+      if (existing) throw createError(409, '璇ユ墜鏈哄彿宸茶鍏朵粬璐﹀彿浣跨敤');
     } else {
       const existing = await User.findOne({ phone });
       if (existing) throw createError(409, '该手机号已存在');
@@ -124,7 +151,7 @@ router.post('/admin/staff/save', requireRole('ADMIN'), async (req, res, next) =>
     if (typeof active === 'boolean') user.active = active;
 
     await user.save();
-    logger.info('人员配置保存', { userId: user._id, operatorId: req.user._id });
+    logger.info('浜哄憳閰嶇疆淇濆瓨', { userId: user._id, operatorId: req.user._id });
     res.json({ code: 0, data: { userId: user._id } });
   } catch (err) {
     next(err);
@@ -133,16 +160,16 @@ router.post('/admin/staff/save', requireRole('ADMIN'), async (req, res, next) =>
 
 /**
  * DELETE /api/admin/staff/:id
- * 删除人员
+ * 鍒犻櫎浜哄憳
  */
-router.delete('/admin/staff/:id', requireRole('ADMIN'), async (req, res, next) => {
+router.delete('/admin/staff/:id', requireRole(...STAFF_MANAGE_ROLES), async (req, res, next) => {
   try {
     const { id } = req.params;
     if (id === String(req.user._id)) {
       throw createError(400, '不能删除自己的账号');
     }
 
-    // 检查是否有进行中的工单指派，避免出现悬空引用
+    // 妫€鏌ユ槸鍚︽湁杩涜涓殑宸ュ崟鎸囨淳锛岄伩鍏嶅嚭鐜版偓绌哄紩鐢?
     const activeDemandCount = await Demand.countDocuments({
       status: { $nin: ['已开通', '已驳回'] },
       $or: [
@@ -152,13 +179,13 @@ router.delete('/admin/staff/:id', requireRole('ADMIN'), async (req, res, next) =
       ]
     });
     if (activeDemandCount > 0) {
-      throw createError(400, `该人员有 ${activeDemandCount} 个进行中的工单指派，请先重新指派后再删除`);
+      throw createError(400, `璇ヤ汉鍛樻湁 ${activeDemandCount} 涓繘琛屼腑鐨勫伐鍗曟寚娲撅紝璇峰厛閲嶆柊鎸囨淳鍚庡啀鍒犻櫎`);
     }
 
     const user = await User.findByIdAndDelete(id);
     if (!user) throw createError(404, '用户不存在');
 
-    logger.info('人员删除', { userId: id, operatorId: req.user._id });
+    logger.info('浜哄憳鍒犻櫎', { userId: id, operatorId: req.user._id });
     res.json({ code: 0, data: {} });
   } catch (err) {
     next(err);
@@ -167,9 +194,9 @@ router.delete('/admin/staff/:id', requireRole('ADMIN'), async (req, res, next) =
 
 /**
  * POST /api/admin/staff/toggle
- * 启用/禁用账号
+ * 鍚敤/绂佺敤璐﹀彿
  */
-router.post('/admin/staff/toggle', requireRole('ADMIN'), async (req, res, next) => {
+router.post('/admin/staff/toggle', requireRole(...STAFF_MANAGE_ROLES), async (req, res, next) => {
   try {
     const { userId, active } = req.body;
     if (!userId) throw createError(400, '缺少userId');
@@ -189,26 +216,39 @@ router.post('/admin/staff/toggle', requireRole('ADMIN'), async (req, res, next) 
 
 /**
  * GET /api/admin/overview
- * 管理员总览统计
+ * 绠＄悊鍛樻€昏缁熻
  */
-router.get('/admin/overview', requireRole('ADMIN'), async (req, res, next) => {
+router.get('/admin/overview', requireRole('ADMIN', 'DISTRICT_MANAGER', 'LEVEL4_MANAGER', 'NETWORK_MANAGER'), async (req, res, next) => {
   try {
     const districtFilter = getDistrictFilter(req);
+    let baseFilter = { ...districtFilter };
+    const isNetworkManager = (req.user.roles || []).includes('NETWORK_MANAGER');
+    if (isNetworkManager) {
+      baseFilter = mergeFilter(baseFilter, await buildNetworkManagerDemandFilter(req.user));
+    }
+
+    const pendingStatus = isNetworkManager ? '待确认' : '待审核';
+    const inProgressExcludedStatuses = ['已开通', '已驳回', pendingStatus];
     const designTimeoutCutoff = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
     const constructionTimeoutCutoff = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
-    const [total, pending, inProgress, completed, timeout, userCount] = await Promise.all([
-      Demand.countDocuments({ ...districtFilter }),
-      Demand.countDocuments({ ...districtFilter, status: '待审核' }),
-      Demand.countDocuments({ ...districtFilter, status: { $nin: ['已开通', '已驳回', '待审核'] } }),
-      Demand.countDocuments({ ...districtFilter, status: '已开通' }),
-      Demand.countDocuments({ ...districtFilter, $or: [
-        { status: '设计中', designAssignTime: { $lte: designTimeoutCutoff } },
-        { status: '施工中', constructionAssignTime: { $lte: constructionTimeoutCutoff } }
-      ]}),
+
+    const [total, pending, designCount, constructionCount, inProgress, completed, timeout, userCount] = await Promise.all([
+      Demand.countDocuments(baseFilter),
+      Demand.countDocuments(mergeFilter(baseFilter, { status: pendingStatus })),
+      Demand.countDocuments(mergeFilter(baseFilter, { status: '设计中' })),
+      Demand.countDocuments(mergeFilter(baseFilter, { status: { $in: ['施工中', '待确认'] } })),
+      Demand.countDocuments(mergeFilter(baseFilter, { status: { $nin: inProgressExcludedStatuses } })),
+      Demand.countDocuments(mergeFilter(baseFilter, { status: '已开通' })),
+      Demand.countDocuments(mergeFilter(baseFilter, {
+        $or: [
+          { status: '设计中', designAssignTime: { $lte: designTimeoutCutoff } },
+          { status: '施工中', constructionAssignTime: { $lte: constructionTimeoutCutoff } }
+        ]
+      })),
       User.countDocuments({ ...districtFilter, active: true })
     ]);
 
-    res.json({ code: 0, data: { total, pending, inProgress, completed, timeout, userCount } });
+    res.json({ code: 0, data: { total, pending, designCount, constructionCount, inProgress, completed, timeout, userCount } });
   } catch (err) {
     next(err);
   }
@@ -216,13 +256,14 @@ router.get('/admin/overview', requireRole('ADMIN'), async (req, res, next) => {
 
 /**
  * GET /api/admin/staff/distinct
- * 返回已登记的单位(area)和部门/网格(gridName)去重列表，用于前端下拉
+ * 杩斿洖宸茬櫥璁扮殑鍗曚綅(area)鍜岄儴闂?缃戞牸(gridName)鍘婚噸鍒楄〃锛岀敤浜庡墠绔笅鎷?
  */
-router.get('/admin/staff/distinct', requireRole('ADMIN'), async (req, res, next) => {
+router.get('/admin/staff/distinct', requireRole(...STAFF_VIEW_ROLES), async (req, res, next) => {
   try {
+    const districtFilter = getDistrictFilter(req);
     const [areas, gridNames] = await Promise.all([
-      User.distinct('area', { area: { $nin: [null, ''] } }),
-      User.distinct('gridName', { gridName: { $nin: [null, ''] } })
+      User.distinct('area', { ...districtFilter, area: { $nin: [null, ''] } }),
+      User.distinct('gridName', { ...districtFilter, gridName: { $nin: [null, ''] } })
     ]);
     res.json({
       code: 0,
@@ -238,16 +279,16 @@ router.get('/admin/staff/distinct', requireRole('ADMIN'), async (req, res, next)
 
 /**
  * GET /api/admin/staff/export
- * 导出人员配置（CSV格式）
+ * 瀵煎嚭浜哄憳閰嶇疆锛圕SV鏍煎紡锛?
  */
-router.get('/admin/staff/export', requireRole('ADMIN'), async (req, res, next) => {
+router.get('/admin/staff/export', requireRole(...STAFF_VIEW_ROLES), async (req, res, next) => {
   try {
-    const users = await User.find({}).sort({ createdAt: -1 }).lean();
+    const users = await User.find(getDistrictFilter(req)).sort({ createdAt: -1 }).lean();
 
-    // CSV 表头
+    // CSV 琛ㄥご
     const headers = ['姓名', '手机号', '微信号', '飞书账号', '单位', '部门/网格', '工号', '人员属性', '角色', '状态'];
 
-    // CSV 数据行
+    // CSV 鏁版嵁琛?
     const rows = users.map(u => [
       u.name || '',
       u.phone || '',
@@ -258,10 +299,10 @@ router.get('/admin/staff/export', requireRole('ADMIN'), async (req, res, next) =
       u.employeeId || '',
       u.staffType || '',
       (u.roles || []).map(r => roleCodeToName[r] || r).join('/'),
-      u.active ? '启用' : '禁用'
+      u.active ? '鍚敤' : '绂佺敤'
     ]);
 
-    // 转义CSV字段（处理逗号、引号等）
+    // 杞箟CSV瀛楁锛堝鐞嗛€楀彿銆佸紩鍙风瓑锛?
     const escapeCSV = (str) => {
       if (str == null) return '';
       const s = String(str);
@@ -276,11 +317,11 @@ router.get('/admin/staff/export', requireRole('ADMIN'), async (req, res, next) =
       ...rows.map(row => row.map(escapeCSV).join(','))
     ].join('\n');
 
-    // 设置响应头
+    // 璁剧疆鍝嶅簲澶?
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename=staff_config_${new Date().toISOString().slice(0,10).replace(/-/g, '')}.csv`);
 
-    // 添加 BOM 以支持 Excel 打开 UTF-8 编码的 CSV
+    // 娣诲姞 BOM 浠ユ敮鎸?Excel 鎵撳紑 UTF-8 缂栫爜鐨?CSV
     res.send('\ufeff' + csvContent);
   } catch (err) {
     next(err);
@@ -289,12 +330,12 @@ router.get('/admin/staff/export', requireRole('ADMIN'), async (req, res, next) =
 
 /**
  * POST /api/admin/staff/import
- * 导入人员配置（CSV格式）
- * 以姓名为索引：
- * 1. 若原系统已有相同姓名：
- *    - 原字段为空，现字段不为空 → 以导入数据为准修改
- *    - 原字段不为空，现字段为空 → 保留原字段
- * 2. 若原系统没有该姓名 → 新增该人员
+ * 瀵煎叆浜哄憳閰嶇疆锛圕SV鏍煎紡锛?
+ * 浠ュ鍚嶄负绱㈠紩锛?
+ * 1. 鑻ュ師绯荤粺宸叉湁鐩稿悓濮撳悕锛?
+ *    - 鍘熷瓧娈典负绌猴紝鐜板瓧娈典笉涓虹┖ 鈫?浠ュ鍏ユ暟鎹负鍑嗕慨鏀?
+ *    - 鍘熷瓧娈典笉涓虹┖锛岀幇瀛楁涓虹┖ 鈫?淇濈暀鍘熷瓧娈?
+ * 2. 鑻ュ師绯荤粺娌℃湁璇ュ鍚?鈫?鏂板璇ヤ汉鍛?
  */
 router.post('/admin/staff/import', requireRole('ADMIN'), async (req, res, next) => {
   try {
@@ -312,10 +353,9 @@ router.post('/admin/staff/import', requireRole('ADMIN'), async (req, res, next) 
       errors: []
     };
 
-    // 角色名称到代码映射
     const roleNameToCode = {
       '一线人员': 'FRONTLINE',
-      '区县经理': 'DISTRICT_MANAGER',
+      '区县管理员': 'DISTRICT_MANAGER',
       '部门经理': 'DEPT_MANAGER',
       '四级经理': 'LEVEL4_MANAGER',
       '网格经理': 'GRID_MANAGER',
@@ -327,55 +367,42 @@ router.post('/admin/staff/import', requireRole('ADMIN'), async (req, res, next) 
     };
 
     for (let i = 0; i < data.length; i++) {
-      const row = data[i];
-      const rowNum = i + 2; // 数据行从第2行开始（第1行是表头）
+      const row = data[i] || {};
+      const rowNum = i + 2;
 
       try {
-        const name = (row['姓名'] || '').trim();
+        const name = String(row['姓名'] || '').trim();
         if (!name) {
-          results.errors.push(`第${rowNum}行：姓名为空，跳过`);
+          results.errors.push(`第${rowNum}行：姓名为空，已跳过`);
           results.skipped++;
           continue;
         }
 
-        const phone = (row['手机号'] || '').trim();
-        const wxAccount = (row['微信号'] || '').trim();
-        const feishuId = (row['飞书账号'] || '').trim();
-        const area = (row['单位'] || '').trim();
-        const gridName = (row['部门/网格'] || '').trim();
-        const employeeId = (row['工号'] || '').trim();
-        const staffType = (row['人员属性'] || '').trim();
-        const rolesStr = (row['角色'] || '').trim();
-        const statusStr = (row['状态'] || '').trim();
+        const phone = String(row['手机号'] || '').trim();
+        const wxAccount = String(row['微信号'] || '').trim();
+        const feishuId = String(row['飞书账号'] || '').trim();
+        const area = String(row['单位'] || '').trim();
+        const gridName = String(row['部门/网格'] || '').trim();
+        const employeeId = String(row['工号'] || '').trim();
+        const staffType = String(row['人员属性'] || '').trim();
+        const rolesStr = String(row['角色'] || '').trim();
+        const statusStr = String(row['状态'] || '').trim();
 
-        // 解析角色
-        let roles = [];
-        if (rolesStr) {
-          roles = rolesStr.split('/').map(r => {
-            const trimmed = r.trim();
-            return roleNameToCode[trimmed] || trimmed;
-          }).filter(r => VALID_ROLES.includes(r));
-        }
+        const roles = rolesStr
+          ? rolesStr.split('/').map((item) => roleNameToCode[item.trim()] || item.trim()).filter((role) => VALID_ROLES.includes(role))
+          : [];
 
-        // 按手机号查找（唯一约束，避免同名误覆盖）
-        // 无手机号时降级按姓名模糊匹配（向后兼容）
-        const existingUser = phone
+        let user = phone
           ? await User.findOne({ phone })
           : await User.findOne({ name: { $regex: new RegExp('^' + escapeRegex(name) + '$', 'i') } });
-        const user = existingUser;
 
         if (user) {
-          // 已有用户，按规则更新：
-          // 原字段为空，现字段不为空 → 以导入数据为准修改
-          // 原字段不为空，现字段为空 → 保留原字段
+          assertSameDistrict(req, user.district);
+
           if (phone && phone !== user.phone) {
-            // 检查新手机号是否被占用
             const phoneExists = await User.findOne({ phone, _id: { $ne: user._id } });
-            if (!phoneExists) {
-              user.phone = phone;
-            }
+            if (!phoneExists) user.phone = phone;
           }
-          // 只有导入数据非空时才更新（保留原数据）
           if (wxAccount) user.wxAccount = wxAccount;
           if (feishuId) user.feishuId = feishuId;
           if (area) user.area = area;
@@ -390,18 +417,16 @@ router.post('/admin/staff/import', requireRole('ADMIN'), async (req, res, next) 
           results.updated++;
           results.success++;
         } else {
-          // 新增用户
           logger.info(`导入未匹配到用户: ${name}，将新增`);
           if (!phone) {
-            results.errors.push(`第${rowNum}行：新增用户手机号不能为空，跳过`);
+            results.errors.push(`第${rowNum}行：新增用户手机号不能为空，已跳过`);
             results.skipped++;
             continue;
           }
 
-          // 检查手机号是否被占用
           const phoneExists = await User.findOne({ phone });
           if (phoneExists) {
-            results.errors.push(`第${rowNum}行：手机号${phone}已被其他用户使用，跳过`);
+            results.errors.push(`第${rowNum}行：手机号 ${phone} 已被其他用户占用，已跳过`);
             results.skipped++;
             continue;
           }
@@ -416,7 +441,8 @@ router.post('/admin/staff/import', requireRole('ADMIN'), async (req, res, next) 
             employeeId: employeeId || '',
             staffType: staffType || '',
             roles: roles.length ? roles : ['FRONTLINE'],
-            active: statusStr !== '禁用'
+            active: statusStr !== '禁用',
+            district: getDistrictFromBody(req, row)
           });
 
           await user.save();
@@ -434,7 +460,7 @@ router.post('/admin/staff/import', requireRole('ADMIN'), async (req, res, next) 
     res.json({
       code: 0,
       data: {
-        message: `导入完成：新增${results.added}条，更新${results.updated}条，跳过${results.skipped}条`,
+        message: `导入完成：新增 ${results.added} 条，更新 ${results.updated} 条，跳过 ${results.skipped} 条`,
         details: results
       }
     });
@@ -445,31 +471,39 @@ router.post('/admin/staff/import', requireRole('ADMIN'), async (req, res, next) 
 
 /**
  * GET /api/admin/demands/export
- * 导出工单列表为 xlsx（管理员）
- * 包含现场照片、资源照片、设计文件、施工照片、监理照片的完整 URL
+ * 导出工单列表为 xlsx
  */
-router.get('/admin/demands/export', requireRole('ADMIN'), async (req, res, next) => {
+router.get('/admin/demands/export', requireRole('ADMIN', 'DISTRICT_MANAGER', 'LEVEL4_MANAGER', 'NETWORK_MANAGER', 'DESIGN', 'CONSTRUCTION', 'SUPERVISOR'), async (req, res, next) => {
   try {
     const { keyword, status, type, area, dateFrom, dateTo } = req.query;
-    const query = {};
-    // 区县过滤（ADMIN 可指定 ?district=xxx）
-    Object.assign(query, getDistrictFilter(req));
+    let query = { ...getDistrictFilter(req) };
+    const roles = req.user.roles || [];
+
+    if (roles.includes('NETWORK_MANAGER')) {
+      query = mergeFilter(query, await buildNetworkManagerDemandFilter(req.user));
+    } else if (roles.includes('DESIGN') || roles.includes('CONSTRUCTION') || roles.includes('SUPERVISOR')) {
+      query = mergeFilter(query, getAssignedOrProcessedDemandFilter(req.user));
+    }
+
     if (status) query.status = status;
     if (type) query.type = type;
-    if (area) query.acceptArea = { $regex: escapeRegex(area), $options: 'i' };
+    if (area && !roles.includes('NETWORK_MANAGER')) {
+      query.acceptArea = { $regex: escapeRegex(area), $options: 'i' };
+    }
     if (keyword) {
       const safeKw = escapeRegex(keyword);
-      query.$or = [
-        { demandNo: { $regex: safeKw, $options: 'i' } },
-        { demandPersonName: { $regex: safeKw, $options: 'i' } },
-        { locationDetail: { $regex: safeKw, $options: 'i' } }
-      ];
+      query = mergeFilter(query, {
+        $or: [
+          { demandNo: { $regex: safeKw, $options: 'i' } },
+          { demandPersonName: { $regex: safeKw, $options: 'i' } },
+          { locationDetail: { $regex: safeKw, $options: 'i' } }
+        ]
+      });
     }
     if (dateFrom || dateTo) {
       query.createdAt = {};
       if (dateFrom) query.createdAt.$gte = new Date(dateFrom);
       if (dateTo) {
-        // dateTo 取当天结束时间（23:59:59）
         const end = new Date(dateTo);
         end.setHours(23, 59, 59, 999);
         query.createdAt.$lte = end;
@@ -485,21 +519,12 @@ router.get('/admin/demands/export', requireRole('ADMIN'), async (req, res, next)
       .sort({ createdAt: -1 })
       .lean();
 
-    // 构建文件完整 URL 的基础地址：优先环境变量，次选从请求推断
-    const serverBaseUrl = process.env.SERVER_BASE_URL ||
-      `${req.protocol}://${req.get('host')}`;
-
-    // 将相对路径 URL 补全为绝对 URL；外部 URL 保持不变
+    const serverBaseUrl = process.env.SERVER_BASE_URL || `${req.protocol}://${req.get('host')}`;
     const toAbsUrl = (url) => {
       if (!url) return '';
       return url.startsWith('http') ? url : serverBaseUrl + url;
     };
-
-    // 将 URL 数组格式化为单元格文本（单文件直接用，多文件换行分隔）
-    const fmtUrls = (arr) => {
-      const urls = (arr || []).map(toAbsUrl).filter(Boolean);
-      return urls.join('\n');
-    };
+    const fmtUrls = (arr) => (arr || []).map(toAbsUrl).filter(Boolean).join('\n');
 
     const ExcelJS = require('exceljs');
     const workbook = new ExcelJS.Workbook();
@@ -507,117 +532,114 @@ router.get('/admin/demands/export', requireRole('ADMIN'), async (req, res, next)
     workbook.created = new Date();
 
     const ws = workbook.addWorksheet('工单列表', {
-      views: [{ state: 'frozen', ySplit: 1 }]  // 冻结表头行
+      views: [{ state: 'frozen', ySplit: 1 }]
     });
 
-    // ── 列定义：key 对应 row[key]，width 为列宽 ──────────────────────────
     ws.columns = [
-      { header: '工单编号',     key: 'demandNo',              width: 20 },
-      { header: '受理区域',     key: 'acceptArea',            width: 18 },
-      { header: '网格',         key: 'gridName',              width: 16 },
-      { header: '服务中心',     key: 'serviceCenter',         width: 18 },
-      { header: '网络支撑中心', key: 'networkSupport',        width: 18 },
-      { header: '申请人',       key: 'demandPersonName',      width: 12 },
-      { header: '申请人电话',   key: 'demandPersonPhone',     width: 14 },
-      { header: '提交人',       key: 'createdByName',         width: 12 },
-      { header: '业务类型',     key: 'businessType',          width: 10 },
-      { header: '需求类型',     key: 'type',                  width: 10 },
-      { header: '预约客户数',   key: 'reservedCustomers',     width: 12 },
-      { header: 'DP箱数量',     key: 'dpBoxCount',            width: 10 },
-      { header: '紧急程度',     key: 'urgency',               width: 10 },
-      { header: '详细地址',     key: 'locationDetail',        width: 30 },
-      { header: '现场照片',     key: 'photos',                width: 50 },
-      { header: '设计单位',     key: 'designUnit',            width: 14 },
-      { header: '是否有资源',   key: 'hasResource',           width: 12 },
-      { header: '资源名称',     key: 'resourceName',          width: 16 },
-      { header: '现有资源照片', key: 'resourcePhotos',        width: 50 },
-      { header: '设计文件',     key: 'designFiles',           width: 50 },
-      { header: '设计备注',     key: 'designRemark',          width: 20 },
-      { header: '施工单位',     key: 'constructionUnit',      width: 14 },
-      { header: '覆盖点名称',   key: 'coverageName',          width: 16 },
-      { header: '资产状态',     key: 'assetStatus',           width: 12 },
+      { header: '工单编号', key: 'demandNo', width: 20 },
+      { header: '所属区县', key: 'district', width: 12 },
+      { header: '受理区域', key: 'acceptArea', width: 18 },
+      { header: '网格', key: 'gridName', width: 16 },
+      { header: '服务中心', key: 'serviceCenter', width: 18 },
+      { header: '网络支撑中心', key: 'networkSupport', width: 18 },
+      { header: '申请人姓名', key: 'demandPersonName', width: 12 },
+      { header: '申请人电话', key: 'demandPersonPhone', width: 14 },
+      { header: '提交人', key: 'createdByName', width: 12 },
+      { header: '业务类型', key: 'businessType', width: 10 },
+      { header: '需求类型', key: 'type', width: 10 },
+      { header: '预约客户数', key: 'reservedCustomers', width: 12 },
+      { header: 'DP箱数量', key: 'dpBoxCount', width: 10 },
+      { header: '紧急程度', key: 'urgency', width: 10 },
+      { header: '详细地址', key: 'locationDetail', width: 30 },
+      { header: '现场照片', key: 'photos', width: 50 },
+      { header: '设计单位', key: 'designUnit', width: 14 },
+      { header: '是否有资源', key: 'hasResource', width: 12 },
+      { header: '资源名称', key: 'resourceName', width: 16 },
+      { header: '现有资源照片', key: 'resourcePhotos', width: 50 },
+      { header: '设计文件', key: 'designFiles', width: 50 },
+      { header: '设计备注', key: 'designRemark', width: 20 },
+      { header: '施工单位', key: 'constructionUnit', width: 14 },
+      { header: '覆盖点名称', key: 'coverageName', width: 16 },
+      { header: '资产状态', key: 'assetStatus', width: 12 },
       { header: '完工位置详细描述', key: 'constructionLocationDetail', width: 24 },
-      { header: '施工照片',     key: 'constructionPhotos',    width: 50 },
-      { header: '施工备注',     key: 'constructionRemark',    width: 20 },
-      { header: '监理单位',     key: 'supervisorUnit',        width: 14 },
-      { header: '监理备注',     key: 'supervisorRemark',      width: 20 },
-      { header: '监理验收时间', key: 'supervisorVerifyTime',  width: 18 },
-      { header: '监理验收照片', key: 'supervisorPhotos',      width: 50 },
-      { header: '确认人',       key: 'confirmByName',         width: 12 },
-      { header: '确认时间',     key: 'confirmTime',           width: 18 },
-      { header: '创建时间',     key: 'createdAt',             width: 18 },
-      { header: '设计指派时间', key: 'designAssignTime',      width: 18 },
-      { header: '施工指派时间', key: 'constructionAssignTime',width: 18 },
-      { header: '完成时间',     key: 'completedTime',         width: 18 },
-      { header: '总历时',       key: 'totalDuration',         width: 12 },
-      { header: '设计历时',     key: 'designDuration',        width: 12 },
-      { header: '施工历时',     key: 'constructionDuration',  width: 12 },
-      { header: '最终状态',     key: 'status',                width: 12 },
-      { header: '驳回次数',     key: 'rejectCount',           width: 10 },
-      { header: '驳回原因',     key: 'rejectionReason',       width: 24 },
+      { header: '施工照片', key: 'constructionPhotos', width: 50 },
+      { header: '施工备注', key: 'constructionRemark', width: 20 },
+      { header: '监理单位', key: 'supervisorUnit', width: 14 },
+      { header: '监理备注', key: 'supervisorRemark', width: 20 },
+      { header: '监理验收时间', key: 'supervisorVerifyTime', width: 18 },
+      { header: '监理验收照片', key: 'supervisorPhotos', width: 50 },
+      { header: '确认人', key: 'confirmByName', width: 12 },
+      { header: '确认时间', key: 'confirmTime', width: 18 },
+      { header: '创建时间', key: 'createdAt', width: 18 },
+      { header: '设计指派时间', key: 'designAssignTime', width: 18 },
+      { header: '施工指派时间', key: 'constructionAssignTime', width: 18 },
+      { header: '完成时间', key: 'completedTime', width: 18 },
+      { header: '总耗时', key: 'totalDuration', width: 12 },
+      { header: '设计耗时', key: 'designDuration', width: 12 },
+      { header: '施工耗时', key: 'constructionDuration', width: 12 },
+      { header: '最终状态', key: 'status', width: 12 },
+      { header: '驳回次数', key: 'rejectCount', width: 10 },
+      { header: '驳回原因', key: 'rejectionReason', width: 24 }
     ];
 
-    // 表头行样式
     const headerRow = ws.getRow(1);
     headerRow.font = { bold: true, size: 11 };
     headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD6E4F0' } };
     headerRow.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
     headerRow.height = 28;
 
-    // 附件列索引（1-based）：用于设置超链接样式
-    const FILE_COL_KEYS = new Set(['photos', 'resourcePhotos', 'designFiles', 'constructionPhotos', 'supervisorPhotos']);
+    const fileColumnKeys = new Set(['photos', 'resourcePhotos', 'designFiles', 'constructionPhotos', 'supervisorPhotos']);
 
-    // 写入数据行
     demands.forEach((d) => {
       const row = ws.addRow({
-        demandNo:               d.demandNo || '',
-        acceptArea:             d.acceptArea || '',
-        gridName:               d.gridName || '',
-        serviceCenter:          d.serviceCenter || '',
-        networkSupport:         d.networkSupport || '',
-        demandPersonName:       d.demandPersonName || '',
-        demandPersonPhone:      d.demandPersonPhone || '',
-        createdByName:          d.createdBy?.name || '',
-        businessType:           d.businessType || '',
-        type:                   d.type || '',
-        reservedCustomers:      d.reservedCustomers ?? '',
-        dpBoxCount:             d.dpBoxCount ?? '',
-        urgency:                d.urgency || '',
-        locationDetail:         d.locationDetail || '',
-        photos:                 fmtUrls(d.photos),
-        designUnit:             d.assignedDesignUnit?.name || '',
-        hasResource:            d.hasResource == null ? '' : (d.hasResource ? '是（300m内）' : '否'),
-        resourceName:           d.resourceName || '',
-        resourcePhotos:         fmtUrls(d.resourcePhotos),
-        designFiles:            fmtUrls(d.designFiles),
-        designRemark:           d.designRemark || '',
-        constructionUnit:       d.assignedConstructionUnit?.name || '',
-        coverageName:           d.coverageName || '',
-        assetStatus:            d.assetStatus || '',
+        demandNo: d.demandNo || '',
+        district: d.district || '',
+        acceptArea: d.acceptArea || '',
+        gridName: d.gridName || '',
+        serviceCenter: d.serviceCenter || '',
+        networkSupport: d.networkSupport || '',
+        demandPersonName: d.demandPersonName || '',
+        demandPersonPhone: d.demandPersonPhone || '',
+        createdByName: d.createdBy?.name || '',
+        businessType: d.businessType || '',
+        type: d.type || '',
+        reservedCustomers: d.reservedCustomers ?? '',
+        dpBoxCount: d.dpBoxCount ?? '',
+        urgency: d.urgency || '',
+        locationDetail: d.locationDetail || '',
+        photos: fmtUrls(d.photos),
+        designUnit: d.assignedDesignUnit?.name || '',
+        hasResource: d.hasResource == null ? '' : (d.hasResource ? '是（300m内）' : '否'),
+        resourceName: d.resourceName || '',
+        resourcePhotos: fmtUrls(d.resourcePhotos),
+        designFiles: fmtUrls(d.designFiles),
+        designRemark: d.designRemark || '',
+        constructionUnit: d.assignedConstructionUnit?.name || '',
+        coverageName: d.coverageName || '',
+        assetStatus: d.assetStatus || '',
         constructionLocationDetail: d.constructionLocationDetail || '',
-        constructionPhotos:     fmtUrls(d.constructionPhotos),
-        constructionRemark:     d.constructionRemark || '',
-        supervisorUnit:         d.assignedSupervisor?.name || '',
-        supervisorRemark:       d.supervisorRemark || '',
-        supervisorVerifyTime:   fmtDate(d.supervisorVerifyTime),
-        supervisorPhotos:       fmtUrls(d.supervisorPhotos),
-        confirmByName:          d.confirmBy?.name || '',
-        confirmTime:            fmtDate(d.confirmTime),
-        createdAt:              fmtDate(d.createdAt),
-        designAssignTime:       fmtDate(d.designAssignTime),
+        constructionPhotos: fmtUrls(d.constructionPhotos),
+        constructionRemark: d.constructionRemark || '',
+        supervisorUnit: d.assignedSupervisor?.name || '',
+        supervisorRemark: d.supervisorRemark || '',
+        supervisorVerifyTime: fmtDate(d.supervisorVerifyTime),
+        supervisorPhotos: fmtUrls(d.supervisorPhotos),
+        confirmByName: d.confirmBy?.name || '',
+        confirmTime: fmtDate(d.confirmTime),
+        createdAt: fmtDate(d.createdAt),
+        designAssignTime: fmtDate(d.designAssignTime),
         constructionAssignTime: fmtDate(d.constructionAssignTime),
-        completedTime:          fmtDate(d.completedTime),
-        totalDuration:          fmtDuration(d.totalDuration),
-        designDuration:         fmtDuration(d.designDuration),
-        constructionDuration:   fmtDuration(d.constructionDuration),
-        status:                 d.status || '',
-        rejectCount:            d.rejectCount ?? 0,
-        rejectionReason:        d.rejectionReason || '',
+        completedTime: fmtDate(d.completedTime),
+        totalDuration: fmtDuration(d.totalDuration),
+        designDuration: fmtDuration(d.designDuration),
+        constructionDuration: fmtDuration(d.constructionDuration),
+        status: d.status || '',
+        rejectCount: d.rejectCount ?? 0,
+        rejectionReason: d.rejectionReason || ''
       });
 
-      // 为附件列设置：文本换行、蓝色字体（提示可点击），单个 URL 设置超链接
       ws.columns.forEach((col, colIdx) => {
-        if (!FILE_COL_KEYS.has(col.key)) return;
+        if (!fileColumnKeys.has(col.key)) return;
         const cell = row.getCell(colIdx + 1);
         const cellText = cell.value;
         if (!cellText) return;
@@ -626,13 +648,11 @@ router.get('/admin/demands/export', requireRole('ADMIN'), async (req, res, next)
         cell.alignment = { wrapText: true, vertical: 'top' };
 
         if (urls.length === 1) {
-          // 单个文件：设置超链接，显示文件名
           const url = urls[0];
           const fileName = url.split('/').pop() || url;
           cell.value = { text: fileName, hyperlink: url, tooltip: url };
           cell.font = { color: { argb: 'FF1890FF' }, underline: true };
         } else {
-          // 多个文件：纯文本（Excel 会自动识别 http 链接）
           cell.font = { color: { argb: 'FF1890FF' } };
         }
       });
@@ -641,9 +661,8 @@ router.get('/admin/demands/export', requireRole('ADMIN'), async (req, res, next)
       row.height = 20;
     });
 
-    // 输出 xlsx
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="demands_${new Date().toISOString().slice(0,10)}.xlsx"`);
+    res.setHeader('Content-Disposition', `attachment; filename="demands_${new Date().toISOString().slice(0, 10)}.xlsx"`);
     await workbook.xlsx.write(res);
     res.end();
   } catch (err) {

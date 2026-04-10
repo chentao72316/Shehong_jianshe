@@ -9,7 +9,7 @@
         <el-col :span="4">
           <el-select v-model="searchRole" placeholder="选择角色" clearable @change="loadStaff" size="default">
             <el-option label="一线人员" value="FRONTLINE" />
-            <el-option label="区县经理" value="DISTRICT_MANAGER" />
+            <el-option label="区县管理员" value="DISTRICT_MANAGER" />
             <el-option label="部门经理" value="DEPT_MANAGER" />
             <el-option label="四级经理" value="LEVEL4_MANAGER" />
             <el-option label="设计" value="DESIGN" />
@@ -21,9 +21,9 @@
           </el-select>
         </el-col>
         <el-col :span="10">
-          <el-button type="primary" @click="handleAdd" size="default">新增人员</el-button>
+          <el-button v-if="canManageStaff" type="primary" @click="handleAdd" size="default">新增人员</el-button>
           <el-button type="success" @click="handleExport" size="default">导出</el-button>
-          <el-button type="warning" @click="handleImport" size="default">导入</el-button>
+          <el-button v-if="canImportStaff" type="warning" @click="handleImport" size="default">导入</el-button>
         </el-col>
       </el-row>
     </el-card>
@@ -67,10 +67,11 @@
         <el-table-column label="操作" width="270" fixed="right">
           <template #default="{ row }">
             <div style="white-space: nowrap;">
-              <el-button type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
-              <el-button type="warning" link size="small" @click="handleResetPassword(row)">重置密码</el-button>
-              <el-button type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
+              <el-button v-if="canManageStaff" type="primary" link size="small" @click="handleEdit(row)">编辑</el-button>
+              <el-button v-if="canManageStaff" type="warning" link size="small" @click="handleResetPassword(row)">重置密码</el-button>
+              <el-button v-if="canManageStaff" type="danger" link size="small" @click="handleDelete(row)">删除</el-button>
               <el-button
+                v-if="canManageStaff"
                 :type="row.active ? 'warning' : 'success'"
                 link
                 size="small"
@@ -125,7 +126,7 @@
         <el-row :gutter="20">
           <el-col :span="12">
             <el-form-item label="区县">
-              <el-select v-model="form.district" style="width: 100%">
+              <el-select v-model="form.district" :disabled="!userStore.isAdmin()" style="width: 100%">
                 <el-option v-for="d in ['射洪市', '蓬溪县', '大英县', '船山区', '安居区']" :key="d" :label="d" :value="d" />
               </el-select>
             </el-form-item>
@@ -181,13 +182,13 @@
         <el-form-item label="角色" prop="roles">
           <el-checkbox-group v-model="form.roles">
             <el-checkbox label="FRONTLINE">一线人员</el-checkbox>
-            <el-checkbox label="DISTRICT_MANAGER">区县经理</el-checkbox>
+            <el-checkbox label="DISTRICT_MANAGER">区县管理员</el-checkbox>
             <el-checkbox label="DEPT_MANAGER">部门经理</el-checkbox>
             <el-checkbox label="LEVEL4_MANAGER">四级经理</el-checkbox>
             <el-checkbox label="DESIGN">设计</el-checkbox>
             <el-checkbox label="CONSTRUCTION">施工</el-checkbox>
             <el-checkbox label="SUPERVISOR">监理</el-checkbox>
-            <el-checkbox label="ADMIN">管理员</el-checkbox>
+            <el-checkbox v-if="userStore.isAdmin()" label="ADMIN">管理员</el-checkbox>
             <el-checkbox label="GRID_MANAGER">网格经理</el-checkbox>
             <el-checkbox label="NETWORK_MANAGER">网络支撑经理</el-checkbox>
           </el-checkbox-group>
@@ -195,7 +196,7 @@
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="saving" @click="handleSave">保存</el-button>
+        <el-button v-if="canManageStaff" type="primary" :loading="saving" @click="handleSave">保存</el-button>
       </template>
     </el-dialog>
 
@@ -227,7 +228,7 @@
       </el-form>
       <template #footer>
         <el-button @click="passwordDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="passwordLoading" @click="confirmResetPassword">确认重置</el-button>
+        <el-button v-if="canManageStaff" type="primary" :loading="passwordLoading" @click="confirmResetPassword">确认重置</el-button>
       </template>
     </el-dialog>
 
@@ -245,7 +246,7 @@
           </li>
           <li>若原系统没有该姓名 → 新增该人员</li>
         </ul>
-        <p style="margin-top: 10px;"><strong>支持角色：</strong>一线人员、区县经理、部门经理、四级经理、网格经理、网络支撑经理、设计、施工、监理、管理员</p>
+        <p style="margin-top: 10px;"><strong>支持角色：</strong>一线人员、区县管理员、部门经理、四级经理、网格经理、网络支撑经理、设计、施工、监理、管理员</p>
         <p style="margin-top: 5px;"><strong>人员属性：</strong>自有、三方</p>
       </div>
       <el-upload
@@ -266,7 +267,7 @@
       </div>
       <template #footer>
         <el-button @click="importDialogVisible = false">取消</el-button>
-        <el-button type="primary" :loading="importing" @click="handleImportConfirm">确定导入</el-button>
+        <el-button v-if="canImportStaff" type="primary" :loading="importing" @click="handleImportConfirm">确定导入</el-button>
       </template>
     </el-dialog>
   </div>
@@ -278,8 +279,12 @@ import { getStaffList, saveStaff, toggleStaff, deleteStaff, importStaff, exportS
 import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type UploadFile } from 'element-plus'
 import type { StaffMember } from '@/types'
 import { useDistrictStore } from '@/stores/district'
+import { useUserStore } from '@/stores/user'
 
 const districtStore = useDistrictStore()
+const userStore = useUserStore()
+const canManageStaff = userStore.hasAnyRole(['ADMIN', 'DISTRICT_MANAGER'])
+const canImportStaff = userStore.isAdmin()
 
 const loading = ref(false)
 const saving = ref(false)
@@ -360,7 +365,7 @@ const rules: FormRules = {
 const getRoleName = (role: string) => {
   const map: Record<string, string> = {
     FRONTLINE: '一线人员',
-    DISTRICT_MANAGER: '区县经理',
+    DISTRICT_MANAGER: '区县管理员',
     DEPT_MANAGER: '部门经理',
     LEVEL4_MANAGER: '四级经理',
     DESIGN: '设计',
@@ -514,7 +519,7 @@ const confirmResetPassword = async () => {
 
 const handleExport = async () => {
   try {
-    await exportStaff()
+    await exportStaff({ district: districtStore.apiDistrict ?? undefined })
     ElMessage.success('导出成功')
   } catch (error) {
     console.error(error)
@@ -631,7 +636,7 @@ const handleImportConfirm = async () => {
 
 const loadDistinctOptions = async () => {
   try {
-    const { areas, gridNames } = await getStaffDistinct()
+    const { areas, gridNames } = await getStaffDistinct({ district: districtStore.apiDistrict ?? undefined })
     areaOptions.value = areas
     gridNameOptions.value = gridNames
   } catch (e) {
@@ -644,7 +649,7 @@ const downloadTemplate = () => {
 张三,13800138000,wx123456,fs123456,射洪,太和东服务中心,EMP001,自有,一线人员,启用
 李四,13800138001,wx234567,fs234567,射洪,太和西服务中心,EMP002,三方,施工,启用
 王五,13800138002,wx345678,fs345678,船山,城区网络支撑中心,EMP003,自有,网格经理,启用
-赵六,13800138003,wx456789,fs456789,蓬溪,金华网格,EMP004,自有,区县经理,启用`
+赵六,13800138003,wx456789,fs456789,蓬溪,金华网格,EMP004,自有,区县管理员,启用`
 
   const blob = new Blob(['\ufeff' + template], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
@@ -666,6 +671,7 @@ onMounted(() => {
 watch(() => districtStore.apiDistrict, () => {
   currentPage.value = 1
   loadStaff()
+  loadDistinctOptions()
 })
 </script>
 

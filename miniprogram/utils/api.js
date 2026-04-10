@@ -38,6 +38,8 @@ const reassign = (data) => request({ url: '/api/intervene/reassign', method: 'PO
 // 消息
 const getMessageList = (params) => request({ url: '/api/message/list', method: 'GET', data: params });
 const markMessageRead = (data) => request({ url: '/api/message/read', method: 'POST', data: { messageId: data.id } });
+const archiveMessage = (data) => request({ url: '/api/message/archive', method: 'POST', data: { messageId: data.id } });
+const archiveAllMessages = () => request({ url: '/api/message/archive-all', method: 'POST' });
 
 // 统计
 const getGridStats = (params) => request({ url: '/api/stats/grid', method: 'GET', data: { range: params.timeRange } });
@@ -73,7 +75,7 @@ module.exports = {
   submitDesign, startConstruction, submitConstruction,
   getTimeoutList, sendRemind,
   forceStatus, addRemark, confirmDemand, reassign,
-  getMessageList, markMessageRead,
+  getMessageList, markMessageRead, archiveMessage, archiveAllMessages,
   getGridStats, getAreaStats,
   getStaffConfig, updateStaff,
   getAreaConfigList, saveAreaConfig, deleteAreaConfig, getAreaConfigByArea,

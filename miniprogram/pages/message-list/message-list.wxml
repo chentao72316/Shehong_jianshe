@@ -1,4 +1,8 @@
 <view class="page-container">
+  <view class="toolbar" wx:if="{{clearableCount > 0}}">
+    <view class="clear-button" bindtap="onTapClear">清空非公告</view>
+  </view>
+
   <view class="msg-list" wx:if="{{messages.length > 0}}">
     <view
       class="msg-item {{item.read ? '' : 'unread'}} {{item.type === 'system' ? 'system-msg' : ''}}"
@@ -7,6 +11,7 @@
       data-id="{{item.id}}"
       data-demand-id="{{item.demandId}}"
       data-demand-no="{{item.demandNo}}"
+      data-announcement-id="{{item.announcementId}}"
       data-read="{{item.read}}"
       data-type="{{item.type}}"
       bindtap="onTapMessage"

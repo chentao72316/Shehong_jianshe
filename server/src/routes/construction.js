@@ -7,6 +7,7 @@ const { logger } = require('../utils/logger');
 const { broadcastDemandUpdate } = require('../utils/websocket');
 const { sendStatusChangeMessages } = require('../utils/msgHelper');
 const { recalculateDemandDurations } = require('../utils/demand-duration');
+const { resolveDemandNetworkSupport } = require('../utils/network-manager-scope');
 
 const router = express.Router();
 
@@ -87,6 +88,7 @@ router.post('/construction/submit', requireRole('CONSTRUCTION'), async (req, res
     demand.constructionLocationDetail = constructionLocationDetail || '';
     demand.constructionPhotos = photos || [];
     demand.constructionRemark = remark;
+    demand.networkSupport = await resolveDemandNetworkSupport(demand.district, demand.acceptArea, demand.networkSupport);
 
     // 施工完成，流转为待网络支撑经理确认
     demand.status = '待确认';

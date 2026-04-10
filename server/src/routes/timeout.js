@@ -7,6 +7,7 @@ const { sendTimeoutRemind } = require('../utils/feishu');
 const { sendRemindMessage } = require('../utils/msgHelper');
 const { logger } = require('../utils/logger');
 const { getDistrictFilter } = require('../utils/district');
+const { buildNetworkManagerDemandFilter } = require('../utils/network-manager-scope');
 
 const router = express.Router();
 
@@ -42,13 +43,13 @@ router.get('/timeout/list', requireRole('GRID_MANAGER', 'NETWORK_MANAGER', 'DIST
 
     // 角色范围限制
     const roles = req.user.roles || [];
-    if (roles.includes('ADMIN') || roles.includes('DISTRICT_MANAGER')) {
+    if (roles.includes('ADMIN') || roles.includes('DISTRICT_MANAGER') || roles.includes('LEVEL4_MANAGER')) {
       // 全量可见
     } else if (req.user.gridName && req.user.gridName.includes('网络建设中心')) {
       // 建维中心人员全量可见
     } else if (roles.includes('NETWORK_MANAGER')) {
-      conditions.push({ acceptArea: req.user.area });
-    } else if (roles.includes('GRID_MANAGER') || roles.includes('DEPT_MANAGER') || roles.includes('LEVEL4_MANAGER')) {
+      conditions.push(await buildNetworkManagerDemandFilter(req.user));
+    } else if (roles.includes('GRID_MANAGER') || roles.includes('DEPT_MANAGER')) {
       conditions.push({ $or: [{ gridName: req.user.gridName }, { acceptArea: req.user.gridName }] });
     }
 

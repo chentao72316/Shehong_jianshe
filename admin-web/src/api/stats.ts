@@ -1,4 +1,4 @@
-import request from './request'
+﻿import request from './request'
 import type { AreaStats, GridStats } from '@/types'
 
 export interface StatusSummaryItem {

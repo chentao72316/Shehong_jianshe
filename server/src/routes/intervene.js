@@ -1,7 +1,6 @@
 const express = require('express');
 const Demand = require('../models/demand.model');
 const User = require('../models/user.model');
-const AreaConfig = require('../models/area-config.model');
 const { createError } = require('../middleware/error-handler');
 const { requireRole } = require('../middleware/auth');
 const { logger } = require('../utils/logger');
@@ -9,6 +8,7 @@ const { broadcastDemandUpdate } = require('../utils/websocket');
 const { sendAssignMessages, sendStatusChangeMessages } = require('../utils/msgHelper');
 const { canUserAccessDemand } = require('../utils/demand-access');
 const { recalculateDemandDurations } = require('../utils/demand-duration');
+const { canNetworkManagerAccessDemand } = require('../utils/network-manager-scope');
 
 const router = express.Router();
 
@@ -21,7 +21,6 @@ const TERMINAL_STATUSES = ['已开通', '已驳回'];
 router.post('/intervene/reassign', requireRole('NETWORK_MANAGER', 'ADMIN'), async (req, res, next) => {
   try {
     const { demandId, unitType, userId } = req.body;
-    // unitType: 'design' | 'construction' | 'supervisor'
     if (!['design', 'construction', 'supervisor'].includes(unitType)) {
       throw createError(400, 'unitType 必须为 design / construction / supervisor');
     }
@@ -30,6 +29,13 @@ router.post('/intervene/reassign', requireRole('NETWORK_MANAGER', 'ADMIN'), asyn
     if (!demand) throw createError(404, '需求不存在');
     if (TERMINAL_STATUSES.includes(demand.status)) {
       throw createError(400, '已终态的需求不可重新指派');
+    }
+
+    if (!req.user.roles.includes('ADMIN')) {
+      const hasAccess = await canNetworkManagerAccessDemand(req.user, demand);
+      if (!hasAccess) {
+        throw createError(403, '您无权重新指派此需求');
+      }
     }
 
     const targetUser = await User.findOne({ _id: userId, active: true });
@@ -48,7 +54,6 @@ router.post('/intervene/reassign', requireRole('NETWORK_MANAGER', 'ADMIN'), asyn
 
     demand[field] = userId;
 
-    // 待审核状态指派设计单位时，需要设置 designAssignTime 并变更状态为设计中
     if (unitType === 'design' && demand.status === '待审核') {
       demand.designAssignTime = new Date();
       demand.status = '设计中';
@@ -72,7 +77,6 @@ router.post('/intervene/reassign', requireRole('NETWORK_MANAGER', 'ADMIN'), asyn
     const { syncDemandWithPopulate } = require('../utils/feishu-bitable');
     syncDemandWithPopulate(demand).catch(() => {});
 
-    // 异步广播WebSocket通知
     broadcastDemandUpdate(demandId, {
       type: 'reassign',
       demandId,
@@ -83,7 +87,6 @@ router.post('/intervene/reassign', requireRole('NETWORK_MANAGER', 'ADMIN'), asyn
       assignedSupervisor: demand.assignedSupervisor
     });
 
-    // 站内消息：通知被指派人
     sendAssignMessages(demand, [targetUser._id]).catch(() => {});
   } catch (err) {
     next(err);
@@ -124,7 +127,6 @@ router.post('/intervene/force-status', requireRole('ADMIN'), async (req, res, ne
     const { syncDemandWithPopulate } = require('../utils/feishu-bitable');
     syncDemandWithPopulate(demand).catch(() => {});
 
-    // 异步广播WebSocket通知
     broadcastDemandUpdate(demandId, {
       type: 'force_status',
       demandId,
@@ -178,7 +180,6 @@ router.post('/intervene/remark', async (req, res, next) => {
 router.post('/intervene/confirm', requireRole('NETWORK_MANAGER', 'ADMIN'), async (req, res, next) => {
   try {
     const { demandId, action, rejectReason } = req.body;
-    // action: 'approve' | 'reject'
 
     if (!['approve', 'reject'].includes(action)) {
       throw createError(400, 'action 必须为 approve 或 reject');
@@ -193,24 +194,14 @@ router.post('/intervene/confirm', requireRole('NETWORK_MANAGER', 'ADMIN'), async
       throw createError(400, '只有待确认状态的需求才能确认');
     }
 
-    // ADMIN 无限制；NETWORK_MANAGER 需校验：
-    // 必须是 AreaConfig 中该受理区域指定的 networkManagerId，
-    // 无 AreaConfig 配置时，允许任意 NETWORK_MANAGER 操作（降级）
     if (!req.user.roles.includes('ADMIN')) {
-      const areaConfig = await AreaConfig.findOne({ district: demand.district, acceptArea: demand.acceptArea, active: true }).lean();
-      const designatedManagerId = areaConfig ? String(areaConfig.networkManagerId) : null;
-      const userId = String(req.user._id);
-
-      const isDesignatedManager = designatedManagerId && designatedManagerId === userId;
-      const isNetworkManagerFallback = !areaConfig && req.user.roles.includes('NETWORK_MANAGER');
-
-      if (!isDesignatedManager && !isNetworkManagerFallback) {
+      const hasAccess = await canNetworkManagerAccessDemand(req.user, demand);
+      if (!hasAccess) {
         throw createError(403, '您无权确认此需求');
       }
     }
 
     if (action === 'approve') {
-      // 确认开通
       const now = new Date();
       demand.status = '已开通';
       demand.completedTime = now;
@@ -226,18 +217,15 @@ router.post('/intervene/confirm', requireRole('NETWORK_MANAGER', 'ADMIN'), async
       await demand.save();
       logger.info('网络支撑经理确认开通', { demandId, confirmBy: req.user._id });
 
-      // 异步发送开通通知 + 飞书多维表格同步
       const { notifyDemandCompleted } = require('../utils/notify');
       const { syncDemandWithPopulate } = require('../utils/feishu-bitable');
       notifyDemandCompleted(demand).catch(() => {});
       syncDemandWithPopulate(demand).catch(() => {});
       sendStatusChangeMessages(demand, [demand.createdBy], '已确认开通，感谢您的耐心等待').catch(() => {});
     } else {
-      // 驳回施工：重置施工计时，避免重新施工的工单立即超时
       demand.status = '施工中';
       demand.constructionAssignTime = new Date();
       demand.confirmRejectReason = rejectReason;
-      // 查询施工单位姓名，写入日志便于追踪
       let constructionStr = '';
       if (demand.assignedConstructionUnit) {
         const constructionUser = await User.findById(demand.assignedConstructionUnit, 'name').lean();
@@ -258,7 +246,6 @@ router.post('/intervene/confirm', requireRole('NETWORK_MANAGER', 'ADMIN'), async
 
     res.json({ code: 0, data: { status: demand.status } });
 
-    // 异步广播WebSocket通知
     broadcastDemandUpdate(demandId, {
       type: action === 'approve' ? 'confirm_approve' : 'confirm_reject',
       demandId,

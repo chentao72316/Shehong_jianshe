@@ -41,7 +41,7 @@
           </div>
           <div class="user-info">
             <div class="user-name">{{ userStore.userInfo?.name || '管理员' }}</div>
-            <div class="user-role">{{ userStore.userInfo?.roles?.[0] || 'ADMIN' }}</div>
+            <div class="user-role">{{ userRoleLabel }}</div>
           </div>
           <el-dropdown @command="handleCommand" trigger="click">
             <button class="user-menu-btn">
@@ -108,6 +108,8 @@ import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useDistrictStore } from '@/stores/district'
+import type { Role } from '@/types'
+import { getRoleLabel } from '@/utils/pc-access'
 import {
   DataAnalysis, User, Document, Clock, PieChart,
   Setting, MapLocation, Key, Bell, Tools, MoreFilled, Location
@@ -127,19 +129,29 @@ interface NavItem {
   label: string
   icon: Component
   badge?: string | number
+  roles: Role[]
 }
 
-const navItems: NavItem[] = [
-  { path: '/dashboard',   label: '管理首页', icon: DataAnalysis },
-  { path: '/staff',       label: '人员配置', icon: User },
-  { path: '/demands',     label: '工单列表', icon: Document },
-  { path: '/timeout',     label: '超时督办', icon: Clock },
-  { path: '/stats',       label: '统计报表', icon: PieChart },
-  { path: '/config',      label: '系统配置', icon: Setting },
-  { path: '/area-config', label: '区域配置', icon: MapLocation },
-  { path: '/role-config', label: '角色权限', icon: Key },
-  { path: '/announcement',label: '系统公告', icon: Bell },
-]
+const navItems = computed<NavItem[]>(() => {
+  const demandLabel = userStore.hasAnyRole(['DESIGN', 'CONSTRUCTION', 'SUPERVISOR']) ? '我的工单' : '工单列表'
+  const items: NavItem[] = [
+    { path: '/dashboard', label: '管理首页', icon: DataAnalysis, roles: ['ADMIN', 'DISTRICT_MANAGER', 'LEVEL4_MANAGER', 'NETWORK_MANAGER'] },
+    { path: '/staff', label: '人员配置', icon: User, roles: ['ADMIN', 'DISTRICT_MANAGER', 'LEVEL4_MANAGER'] },
+    { path: '/demands', label: demandLabel, icon: Document, roles: ['ADMIN', 'DISTRICT_MANAGER', 'LEVEL4_MANAGER', 'NETWORK_MANAGER', 'DESIGN', 'CONSTRUCTION', 'SUPERVISOR'] },
+    { path: '/timeout', label: '超时督办', icon: Clock, roles: ['ADMIN', 'DISTRICT_MANAGER', 'LEVEL4_MANAGER', 'NETWORK_MANAGER'] },
+    { path: '/stats', label: '统计报表', icon: PieChart, roles: ['ADMIN', 'DISTRICT_MANAGER', 'LEVEL4_MANAGER', 'NETWORK_MANAGER'] },
+    { path: '/config', label: '系统配置', icon: Setting, roles: ['ADMIN'] },
+    { path: '/area-config', label: '区域配置', icon: MapLocation, roles: ['ADMIN', 'DISTRICT_MANAGER', 'LEVEL4_MANAGER'] },
+    { path: '/role-config', label: '角色权限', icon: Key, roles: ['ADMIN'] },
+    { path: '/announcement', label: '系统公告', icon: Bell, roles: ['ADMIN', 'DISTRICT_MANAGER', 'LEVEL4_MANAGER', 'NETWORK_MANAGER', 'DESIGN', 'CONSTRUCTION', 'SUPERVISOR'] }
+  ]
+
+  return items.filter((item) => userStore.hasAnyRole(item.roles))
+})
+
+const userRoleLabel = computed(() => {
+  return getRoleLabel(userStore.userInfo)
+})
 
 const isActive = (path: string) => route.path === path || route.path.startsWith(path + '/')
 

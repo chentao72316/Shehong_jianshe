@@ -12,7 +12,7 @@ const router = express.Router();
  * 获取所有受理区域配置（含候选人员信息）
  * ADMIN 可通过 ?district=xxx 筛选区县；非 ADMIN 只能看本区县
  */
-router.get('/admin/area-config', requireRole('ADMIN'), async (req, res, next) => {
+router.get('/admin/area-config', requireRole('ADMIN', 'DISTRICT_MANAGER', 'LEVEL4_MANAGER'), async (req, res, next) => {
   try {
     const filter = getDistrictFilter(req);
     const list = await AreaConfig.find(filter)
@@ -53,7 +53,7 @@ router.get('/admin/area-config/by-area/:area', async (req, res, next) => {
  * POST /api/admin/area-config/save
  * 新增或更新受理区域配置（按 district + acceptArea upsert）
  */
-router.post('/admin/area-config/save', requireRole('ADMIN'), async (req, res, next) => {
+router.post('/admin/area-config/save', requireRole('ADMIN', 'DISTRICT_MANAGER'), async (req, res, next) => {
   try {
     const {
       acceptArea, networkCenter,
@@ -92,11 +92,15 @@ router.post('/admin/area-config/save', requireRole('ADMIN'), async (req, res, ne
  * DELETE /api/admin/area-config/:id
  * 删除受理区域配置
  */
-router.delete('/admin/area-config/:id', requireRole('ADMIN'), async (req, res, next) => {
+router.delete('/admin/area-config/:id', requireRole('ADMIN', 'DISTRICT_MANAGER'), async (req, res, next) => {
   try {
     const { id } = req.params;
-    const config = await AreaConfig.findByIdAndDelete(id);
+    const config = await AreaConfig.findById(id);
     if (!config) throw createError(404, '配置不存在');
+    if (!(req.user.roles || []).includes('ADMIN') && (config.district || '射洪市') !== (req.user.district || '射洪市')) {
+      throw createError(403, '仅可删除本区县配置');
+    }
+    await AreaConfig.findByIdAndDelete(id);
     logger.info('区域配置删除', { id, acceptArea: config.acceptArea, district: config.district, operatorId: req.user._id });
     res.json({ code: 0, data: {} });
   } catch (err) {

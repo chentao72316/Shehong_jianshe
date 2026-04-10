@@ -149,7 +149,7 @@ Page({
         { key: 'done',       label: '已完成',  colorClass: 'text-success' }
       ],
       NETWORK_MANAGER: [
-        { key: 'pending',    label: '待指派',  colorClass: 'text-warning' },
+        { key: 'pending',    label: '待确认',  colorClass: 'text-warning' },
         { key: 'inProgress', label: '进行中',  colorClass: 'text-info' },
         { key: 'timeout',    label: '已超时',  colorClass: 'text-danger' },
         { key: 'done',       label: '已完成',  colorClass: 'text-success' }
@@ -195,7 +195,7 @@ Page({
       CONSTRUCTION:      '施工动态',
       SUPERVISOR:        '监理动态',
       GRID_MANAGER:      '网格动态',
-      NETWORK_MANAGER:   '区域动态',
+      NETWORK_MANAGER:   '待确认工单',
       DISTRICT_MANAGER: '全县区动态',
       DEPT_MANAGER:      '全公司动态',
       LEVEL4_MANAGER:    '全局工单动态',
@@ -212,7 +212,7 @@ Page({
       CONSTRUCTION:      '施工中任务',
       SUPERVISOR:        '待处理任务',
       GRID_MANAGER:      '待指派工单',
-      NETWORK_MANAGER:   '待指派工单',
+      NETWORK_MANAGER:   '待确认工单',
       DISTRICT_MANAGER:  '进行中超时工单',
       DEPT_MANAGER:      '进行中超时工单',
       LEVEL4_MANAGER:    '进行中超时工单',
