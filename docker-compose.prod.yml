@@ -1,0 +1,22 @@
+services:
+  shehong-server:
+    build:
+      context: ./server
+    container_name: shehong-server
+    restart: unless-stopped
+    env_file:
+      - ./server/.env.prod
+    volumes:
+      - ./server/uploads:/app/uploads
+    ports:
+      - "127.0.0.1:3001:3000"
+    networks:
+      - shehong-net
+      - fastgpt-net
+
+networks:
+  shehong-net:
+    driver: bridge
+  fastgpt-net:
+    external: true
+    name: fastgpt_fastgpt
