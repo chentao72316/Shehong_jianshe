@@ -19,7 +19,9 @@ async function authenticate(req, res, next) {
       return res.status(401).json({ code: 401, message: '用户不存在或已被禁用' });
     }
     // 使用数据库中的用户信息（包含最新角色），不信任 JWT payload 中的角色
+    const requestedRole = req.headers['x-current-role'];
     req.user = user;
+    req.currentRole = requestedRole && (user.roles || []).includes(requestedRole) ? requestedRole : null;
     next();
   } catch (err) {
     logger.warn('Token验证失败', { error: err.message });

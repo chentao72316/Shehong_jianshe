@@ -1,5 +1,5 @@
 {
-  "navigationBarTitleText": "射洪建设支撑",
+  "navigationBarTitleText": "SNYD建设支撑",
   "usingComponents": {
     "status-badge": "/components/status-badge/status-badge",
     "demand-card": "/components/demand-card/demand-card"

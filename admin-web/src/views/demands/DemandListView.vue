@@ -599,12 +599,32 @@ const designFileFiles = ref<LocalUploadFile[]>([])
 const constructionPhotoFiles = ref<LocalUploadFile[]>([])
 const supervisorPhotoFiles = ref<LocalUploadFile[]>([])
 
+const getAttachmentBaseUrl = () => {
+  if (/^https?:\/\//i.test(apiBaseUrl)) {
+    return apiBaseUrl.endsWith('/api') ? apiBaseUrl.slice(0, -4) : apiBaseUrl
+  }
+  return window.location.origin
+}
+
+const shouldRewriteLegacyLocalUrl = (url: URL) => {
+  return ['localhost', '127.0.0.1', '0.0.0.0'].includes(url.hostname) || /^192\.168\./.test(url.hostname)
+}
+
 const normalizeAttachmentUrl = (url?: string) => {
   if (!url) return ''
-  if (/^https?:\/\//i.test(url)) return url
+  if (/^https?:\/\//i.test(url)) {
+    try {
+      const parsedUrl = new URL(url)
+      if (shouldRewriteLegacyLocalUrl(parsedUrl) && parsedUrl.pathname.startsWith('/uploads/')) {
+        return `${getAttachmentBaseUrl()}${parsedUrl.pathname}${parsedUrl.search}`
+      }
+      return url
+    } catch {
+      return url
+    }
+  }
   const normalizedUrl = url.startsWith('/') ? url : `/${url}`
-  const serverBaseUrl = apiBaseUrl.endsWith('/api') ? apiBaseUrl.slice(0, -4) : apiBaseUrl
-  return serverBaseUrl ? `${serverBaseUrl}${normalizedUrl}` : normalizedUrl
+  return `${getAttachmentBaseUrl()}${normalizedUrl}`
 }
 
 const getFileNameFromUrl = (url: string) => {

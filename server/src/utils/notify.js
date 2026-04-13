@@ -7,6 +7,7 @@ const User = require('../models/user.model');
 const { sendGroupMessage } = require('./feishu');
 const { logger } = require('./logger');
 const { fmtDate, fmtDuration, minutesBetween } = require('./format');
+const { getAssignmentIds, uniqueIds } = require('./demand-assignment');
 
 const CHAT_ID = process.env.FEISHU_CHAT_ID;
 
@@ -24,7 +25,7 @@ function urgencyLabel(urgency) {
  */
 async function getFeishuIds(userIds) {
   if (!userIds || !userIds.length) return [];
-  const validIds = userIds.filter(Boolean);
+  const validIds = uniqueIds(userIds);
   if (!validIds.length) return [];
   const users = await User.find({ _id: { $in: validIds } }).select('feishuId');
   return users.map(u => u.feishuId).filter(Boolean);
@@ -47,9 +48,9 @@ async function getAreaRoleFeishuIds(area, gridName, roles) {
 async function notifyNewDemand(demand) {
   try {
     const mentionIds = await getFeishuIds([
-      demand.assignedDesignUnit,
-      demand.assignedConstructionUnit,
-      demand.assignedSupervisor
+      ...getAssignmentIds(demand, 'assignedDesignUnit', 'assignedDesignUnits'),
+      ...getAssignmentIds(demand, 'assignedConstructionUnit', 'assignedConstructionUnits'),
+      ...getAssignmentIds(demand, 'assignedSupervisor', 'assignedSupervisors')
     ]);
     const managerIds = await getAreaRoleFeishuIds(demand.acceptArea, demand.gridName, ['GRID_MANAGER', 'NETWORK_MANAGER']);
 
@@ -97,7 +98,7 @@ async function notifyNewDemand(demand) {
  */
 async function notifyRejected(demand, rejectedByName) {
   try {
-    const mentionIds = await getFeishuIds([demand.createdBy, demand.assignedSupervisor]);
+    const mentionIds = await getFeishuIds([demand.createdBy, ...getAssignmentIds(demand, 'assignedSupervisor', 'assignedSupervisors')]);
     const managerIds = await getAreaRoleFeishuIds(demand.acceptArea, demand.gridName, ['GRID_MANAGER', 'NETWORK_MANAGER']);
 
     const content = [
@@ -134,7 +135,10 @@ async function notifyRejected(demand, rejectedByName) {
  */
 async function notifyDesignComplete(demand) {
   try {
-    const mentionIds = await getFeishuIds([demand.assignedConstructionUnit, demand.assignedSupervisor]);
+    const mentionIds = await getFeishuIds([
+      ...getAssignmentIds(demand, 'assignedConstructionUnit', 'assignedConstructionUnits'),
+      ...getAssignmentIds(demand, 'assignedSupervisor', 'assignedSupervisors')
+    ]);
     const managerIds = await getAreaRoleFeishuIds(demand.acceptArea, demand.gridName, ['GRID_MANAGER', 'NETWORK_MANAGER']);
 
     const designDuration = minutesBetween(demand.designAssignTime, new Date());
@@ -175,7 +179,7 @@ async function notifyDesignComplete(demand) {
  */
 async function notifyConstructionConfirm(demand) {
   try {
-    const mentionIds = await getFeishuIds([demand.assignedSupervisor]);
+    const mentionIds = await getFeishuIds(getAssignmentIds(demand, 'assignedSupervisor', 'assignedSupervisors'));
     const managerIds = await getAreaRoleFeishuIds(demand.acceptArea, demand.gridName, ['NETWORK_MANAGER']);
 
     const constructionDuration = minutesBetween(demand.constructionAssignTime, new Date());
@@ -263,7 +267,7 @@ async function notifyDemandCompleted(demand) {
  */
 async function notifyDesignWarning(demand) {
   try {
-    const mentionIds = await getFeishuIds([demand.assignedDesignUnit]);
+    const mentionIds = await getFeishuIds(getAssignmentIds(demand, 'assignedDesignUnit', 'assignedDesignUnits'));
     const elapsed = minutesBetween(demand.designAssignTime, new Date());
 
     const content = [
@@ -297,7 +301,10 @@ async function notifyDesignWarning(demand) {
  */
 async function notifyConstructionUrgent(demand) {
   try {
-    const mentionIds = await getFeishuIds([demand.assignedConstructionUnit, demand.assignedSupervisor]);
+    const mentionIds = await getFeishuIds([
+      ...getAssignmentIds(demand, 'assignedConstructionUnit', 'assignedConstructionUnits'),
+      ...getAssignmentIds(demand, 'assignedSupervisor', 'assignedSupervisors')
+    ]);
     const managerIds = await getAreaRoleFeishuIds(demand.acceptArea, demand.gridName, ['GRID_MANAGER', 'NETWORK_MANAGER']);
     const elapsed = minutesBetween(demand.constructionAssignTime, new Date());
 

@@ -2,10 +2,10 @@
   <!-- 顶部欢迎区 -->
   <view class="header-banner">
     <view class="header-info">
-      <text class="greeting">你好，{{userInfo.name}}</text>
+      <text class="greeting">您好，{{userInfo.name}}</text>
       <text class="role-tag">{{roleTag}}</text>
     </view>
-    <text class="header-date">射洪N/W支撑</text>
+    <text class="header-date">SNYD N/W支撑</text>
   </view>
 
   <!-- 走马灯公告区 -->

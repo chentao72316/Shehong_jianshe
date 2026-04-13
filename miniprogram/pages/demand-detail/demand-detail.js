@@ -31,6 +31,10 @@ function escapeRegExp(str) {
 
 function addName(names, value) {
   if (!value) return;
+  if (Array.isArray(value)) {
+    value.forEach(item => addName(names, item));
+    return;
+  }
   if (typeof value === 'string') {
     names.add(value.trim());
     return;
@@ -43,8 +47,11 @@ function getDemandNames(demand) {
   const names = new Set();
   const userFields = [
     'assignedDesignUnit',
+    'assignedDesignUnits',
     'assignedConstructionUnit',
+    'assignedConstructionUnits',
     'assignedSupervisor',
+    'assignedSupervisors',
     'confirmBy',
     'crossAreaReviewerId',
     'rejectedBy',

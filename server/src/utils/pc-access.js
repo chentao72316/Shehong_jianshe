@@ -31,6 +31,8 @@ const DEMAND_SCOPE_BY_ROLE = {
   SUPERVISOR: 'assigned'
 };
 
+const { getAssignmentIds } = require('./demand-assignment');
+
 function getPrimaryRole(user) {
   const roles = user?.roles || [];
   return ROLE_PRIORITY.find((role) => roles.includes(role)) || roles[0] || null;
@@ -55,6 +57,9 @@ function getAssignedOrProcessedDemandFilter(user) {
       { assignedDesignUnit: userId },
       { assignedConstructionUnit: userId },
       { assignedSupervisor: userId },
+      { assignedDesignUnits: userId },
+      { assignedConstructionUnits: userId },
+      { assignedSupervisors: userId },
       { 'logs.operatorId': userId }
     ]
   };
@@ -74,13 +79,13 @@ function canAccessAssignedDemand(user, demand) {
   const userId = String(user?._id || user?.userId || '');
   if (!userId || !demand) return false;
 
-  const designId = String(demand.assignedDesignUnit?._id || demand.assignedDesignUnit || '');
-  const constructionId = String(demand.assignedConstructionUnit?._id || demand.assignedConstructionUnit || '');
-  const supervisorId = String(demand.assignedSupervisor?._id || demand.assignedSupervisor || '');
+  const designIds = getAssignmentIds(demand, 'assignedDesignUnit', 'assignedDesignUnits');
+  const constructionIds = getAssignmentIds(demand, 'assignedConstructionUnit', 'assignedConstructionUnits');
+  const supervisorIds = getAssignmentIds(demand, 'assignedSupervisor', 'assignedSupervisors');
 
-  return designId === userId ||
-    constructionId === userId ||
-    supervisorId === userId ||
+  return designIds.includes(userId) ||
+    constructionIds.includes(userId) ||
+    supervisorIds.includes(userId) ||
     hasProcessedDemand(user, demand);
 }
 

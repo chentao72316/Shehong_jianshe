@@ -7,7 +7,7 @@ const RoleConfig = require('../models/role-config.model');
 const { createError } = require('../middleware/error-handler');
 const { requireRole } = require('../middleware/auth');
 const { logger } = require('../utils/logger');
-const { notifyNewDemand, notifyRejected, notifyConstructionConfirm } = require('../utils/notify');
+const { notifyNewDemand, notifyRejected } = require('../utils/notify');
 const { broadcastDemandUpdate } = require('../utils/websocket');
 const { sendAssignMessages, sendStatusChangeMessages, sendRejectMessage } = require('../utils/msgHelper');
 const { getDistrictFilter } = require('../utils/district');
@@ -19,6 +19,12 @@ const {
   getAssignedOrProcessedDemandFilter,
   canAccessAssignedDemand
 } = require('../utils/pc-access');
+const {
+  pickActiveCandidates,
+  getAllAssignedUserIds,
+  isUserAssignedTo,
+  namesOf
+} = require('../utils/demand-assignment');
 
 const router = express.Router();
 
@@ -59,24 +65,16 @@ async function nextDemandNo() {
 }
 
 /**
- * 根据受理区域配置的候选人列表，返回第一个 active 的用户
- * @param {ObjectId[]} candidates - 候选人 ID 列表
- * @param {object} populatedList - 已 populate 的候选人对象列表
- */
-function pickFirstActive(populatedList) {
-  return (populatedList || []).find(u => u.active !== false) || null;
-}
-
-/**
  * 解析当前用户主角色，返回 visibilityScope
  * 建维中心人员（gridName 含"网络建设中心"）强制 'all'
  */
-async function resolveVisibilityScope(user) {
-  const explicitScope = getDemandVisibilityScope(user);
+async function resolveVisibilityScope(user, currentRole = null) {
+  const effectiveUser = currentRole ? { ...user, roles: [currentRole] } : user;
+  const explicitScope = getDemandVisibilityScope(effectiveUser);
   if (explicitScope) return explicitScope;
   if (user.gridName && user.gridName.includes('网络建设中心')) return 'all';
 
-  const roles = user.roles || [];
+  const roles = currentRole ? [currentRole] : (user.roles || []);
   const primaryRole = ROLE_PRIORITY.find((role) => roles.includes(role)) || roles[0];
   if (!primaryRole) return 'self';
 
@@ -109,6 +107,7 @@ router.post('/demand/create', async (req, res, next) => {
 
     let initialStatus, assignedDesignUnit = null, assignedConstructionUnit = null,
         assignedSupervisor = null, designAssignTime = null, crossAreaReviewerId = null;
+    let assignedDesignUnits = [], assignedConstructionUnits = [], assignedSupervisors = [];
     let logContent;
 
     if (isCrossArea) {
@@ -130,29 +129,41 @@ router.post('/demand/create', async (req, res, next) => {
         .lean();
 
       if (areaConfig) {
-        const designUser = pickFirstActive(areaConfig.designCandidates);
-        const constructionUser = pickFirstActive(areaConfig.constructionCandidates);
-        const supervisorUser = pickFirstActive(areaConfig.supervisorCandidates);
+        const designUsers = pickActiveCandidates(areaConfig.designCandidates);
+        const constructionUsers = pickActiveCandidates(areaConfig.constructionCandidates);
+        const supervisorUsers = pickActiveCandidates(areaConfig.supervisorCandidates);
+        const designUser = designUsers[0] || null;
+        const constructionUser = constructionUsers[0] || null;
+        const supervisorUser = supervisorUsers[0] || null;
 
         assignedDesignUnit = designUser ? designUser._id : null;
         assignedConstructionUnit = constructionUser ? constructionUser._id : null;
         assignedSupervisor = supervisorUser ? supervisorUser._id : null;
+        assignedDesignUnits = designUsers.map(u => u._id);
+        assignedConstructionUnits = constructionUsers.map(u => u._id);
+        assignedSupervisors = supervisorUsers.map(u => u._id);
         designAssignTime = designUser ? now : null;
         initialStatus = designUser ? '设计中' : '待审核';
-        logContent = `需求已录入${designUser ? '，已自动指派设计单位：' + designUser.name : '（未找到匹配的设计单位，待人工指派）'}`;
+        logContent = `需求已录入${designUsers.length ? '，已自动指派设计单位：' + namesOf(designUsers) : '（未找到匹配的设计单位，待人工指派）'}`;
       } else {
         // 无区域配置，降级查 User 表（兼容旧逻辑）
-        const [designUser, constructionUser, supervisorUser] = await Promise.all([
-          User.findOne({ district: req.user.district || '射洪市', area: acceptArea, roles: 'DESIGN', active: true }),
-          User.findOne({ district: req.user.district || '射洪市', area: acceptArea, roles: 'CONSTRUCTION', active: true }),
-          User.findOne({ district: req.user.district || '射洪市', area: acceptArea, roles: 'SUPERVISOR', active: true })
+        const [designUsers, constructionUsers, supervisorUsers] = await Promise.all([
+          User.find({ district: req.user.district || '射洪市', area: acceptArea, roles: 'DESIGN', active: true }),
+          User.find({ district: req.user.district || '射洪市', area: acceptArea, roles: 'CONSTRUCTION', active: true }),
+          User.find({ district: req.user.district || '射洪市', area: acceptArea, roles: 'SUPERVISOR', active: true })
         ]);
+        const designUser = designUsers[0] || null;
+        const constructionUser = constructionUsers[0] || null;
+        const supervisorUser = supervisorUsers[0] || null;
         assignedDesignUnit = designUser ? designUser._id : null;
         assignedConstructionUnit = constructionUser ? constructionUser._id : null;
         assignedSupervisor = supervisorUser ? supervisorUser._id : null;
+        assignedDesignUnits = designUsers.map(u => u._id);
+        assignedConstructionUnits = constructionUsers.map(u => u._id);
+        assignedSupervisors = supervisorUsers.map(u => u._id);
         designAssignTime = designUser ? now : null;
         initialStatus = designUser ? '设计中' : '待审核';
-        logContent = `需求已录入${designUser ? '，已自动指派设计单位：' + designUser.name : '（未找到匹配的设计单位，待人工指派）'}`;
+        logContent = `需求已录入${designUsers.length ? '，已自动指派设计单位：' + namesOf(designUsers) : '（未找到匹配的设计单位，待人工指派）'}`;
       }
     }
 
@@ -181,6 +192,9 @@ router.post('/demand/create', async (req, res, next) => {
       assignedDesignUnit,
       assignedConstructionUnit,
       assignedSupervisor,
+      assignedDesignUnits,
+      assignedConstructionUnits,
+      assignedSupervisors,
       designAssignTime,
       crossAreaReviewerId,
       logs: [{
@@ -197,7 +211,7 @@ router.post('/demand/create', async (req, res, next) => {
 
     // 站内消息：指派通知（设计中）或跨区域审核通知
     if (demand.status === '设计中') {
-      sendAssignMessages(demand, [demand.assignedDesignUnit, demand.assignedConstructionUnit, demand.assignedSupervisor]).catch(() => {});
+      sendAssignMessages(demand, getAllAssignedUserIds(demand)).catch(() => {});
     } else if (demand.crossAreaReviewerId) {
       sendAssignMessages(demand, [demand.crossAreaReviewerId]).catch(() => {});
     }
@@ -214,6 +228,9 @@ router.post('/demand/create', async (req, res, next) => {
       assignedDesignUnit: demand.assignedDesignUnit,
       assignedConstructionUnit: demand.assignedConstructionUnit,
       assignedSupervisor: demand.assignedSupervisor,
+      assignedDesignUnits: demand.assignedDesignUnits,
+      assignedConstructionUnits: demand.assignedConstructionUnits,
+      assignedSupervisors: demand.assignedSupervisors,
       createdBy: demand.createdBy,
       createdAt: demand.createdAt
     });
@@ -310,7 +327,7 @@ router.get('/demand/list', async (req, res, next) => {
     const query = {};
 
     // 获取可见范围
-    const scope = await resolveVisibilityScope(req.user);
+    const scope = await resolveVisibilityScope(req.user, req.currentRole);
 
     switch (scope) {
       case 'all':
@@ -431,6 +448,9 @@ router.get('/demand/list', async (req, res, next) => {
         .populate('assignedDesignUnit', 'name phone')
         .populate('assignedConstructionUnit', 'name phone')
         .populate('assignedSupervisor', 'name phone')
+        .populate('assignedDesignUnits', 'name phone')
+        .populate('assignedConstructionUnits', 'name phone')
+        .populate('assignedSupervisors', 'name phone')
         .populate('createdBy', 'name phone')
         .lean(),
       Demand.countDocuments(query)
@@ -439,7 +459,9 @@ router.get('/demand/list', async (req, res, next) => {
     // 统计概览（首页用，仅第一页）
     let stats = null;
     if (p === 1) {
-      const { status: _s, type: _t, ...entityFilter } = query;
+      const entityFilter = { ...query };
+      delete entityFilter.status;
+      delete entityFilter.type;
       // 超时：设计中超2天 或 施工中超5天
       const designTimeoutCutoff = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
       const constructionTimeoutCutoff = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000);
@@ -468,7 +490,8 @@ router.get('/demand/list', async (req, res, next) => {
           { completionMode: { $in: [null, ''] }, $or: [{ constructionAssignTime: { $exists: true, $ne: null } }, { coverageName: { $nin: [null, ''] } }] }
         ]
       });
-      const pendingStatus = (req.user.roles || []).includes('NETWORK_MANAGER') ? '待确认' : '待审核';
+      const selectedRoles = req.currentRole ? [req.currentRole] : (req.user.roles || []);
+      const pendingStatus = selectedRoles.includes('NETWORK_MANAGER') ? '待确认' : '待审核';
       const [statsTotal, pending, designing, constructing, waitingConfirm, done, timeout, existingResourceDone, constructionBuildDone] = await Promise.all([
         Demand.countDocuments(entityFilter),
         Demand.countDocuments(withExtraFilter(entityFilter, { status: pendingStatus })),
@@ -480,7 +503,7 @@ router.get('/demand/list', async (req, res, next) => {
         Demand.countDocuments(existingResourceFilter),
         Demand.countDocuments(constructionBuildFilter)
       ]);
-      const inProgressCount = (req.user.roles || []).includes('NETWORK_MANAGER')
+      const inProgressCount = selectedRoles.includes('NETWORK_MANAGER')
         ? designing + constructing
         : pending + designing + constructing;
       stats = {
@@ -537,6 +560,9 @@ router.get('/demand/detail', async (req, res, next) => {
       .populate('assignedDesignUnit', 'name phone')
       .populate('assignedConstructionUnit', 'name phone')
       .populate('assignedSupervisor', 'name phone')
+      .populate('assignedDesignUnits', 'name phone')
+      .populate('assignedConstructionUnits', 'name phone')
+      .populate('assignedSupervisors', 'name phone')
       .populate('createdBy', 'name phone')
       .populate('crossAreaReviewerId', 'name phone')
       .populate('confirmBy', 'name phone')
@@ -545,10 +571,9 @@ router.get('/demand/detail', async (req, res, next) => {
     if (!demand) throw createError(404, '需求不存在');
 
     // 数据权限校验：与 list 接口保持一致，防止越权查看
-    const scope = await resolveVisibilityScope(req.user);
+    const scope = await resolveVisibilityScope(req.user, req.currentRole);
     if (scope !== 'all') {
       const userId = String(req.user._id);
-      const roles = req.user.roles || [];
       let hasAccess = false;
       const creatorId = String(demand.createdBy?._id || demand.createdBy || '');
 
@@ -624,7 +649,7 @@ router.post('/demand/reject', async (req, res, next) => {
     if (demand.status !== '设计中') {
       throw createError(400, '当前状态不允许驳回');
     }
-    if (String(demand.assignedDesignUnit) !== String(req.user._id) &&
+    if (!isUserAssignedTo(demand, req.user, 'assignedDesignUnit', 'assignedDesignUnits') &&
         !req.user.roles.some(r => ['GRID_MANAGER', 'NETWORK_MANAGER', 'ADMIN'].includes(r))) {
       throw createError(403, '无权驳回此需求');
     }
@@ -658,7 +683,10 @@ router.post('/demand/reject', async (req, res, next) => {
       rejectionReason: reason,
       assignedDesignUnit: demand.assignedDesignUnit,
       assignedConstructionUnit: demand.assignedConstructionUnit,
-      assignedSupervisor: demand.assignedSupervisor
+      assignedSupervisor: demand.assignedSupervisor,
+      assignedDesignUnits: demand.assignedDesignUnits,
+      assignedConstructionUnits: demand.assignedConstructionUnits,
+      assignedSupervisors: demand.assignedSupervisors
     });
   } catch (err) {
     next(err);
@@ -723,23 +751,29 @@ router.post('/demand/cross-area-review', requireRole('GRID_MANAGER'), async (req
         .populate('supervisorCandidates', 'name active')
         .lean();
 
-      let designUser = null, constructionUser = null, supervisorUser = null;
+      let designUsers = [], constructionUsers = [], supervisorUsers = [];
       if (areaConfig) {
-        designUser = pickFirstActive(areaConfig.designCandidates);
-        constructionUser = pickFirstActive(areaConfig.constructionCandidates);
-        supervisorUser = pickFirstActive(areaConfig.supervisorCandidates);
+        designUsers = pickActiveCandidates(areaConfig.designCandidates);
+        constructionUsers = pickActiveCandidates(areaConfig.constructionCandidates);
+        supervisorUsers = pickActiveCandidates(areaConfig.supervisorCandidates);
       } else {
         // 降级：按 area 字段查
-        [designUser, constructionUser, supervisorUser] = await Promise.all([
-          User.findOne({ district: demand.district, area: demand.acceptArea, roles: 'DESIGN', active: true }),
-          User.findOne({ district: demand.district, area: demand.acceptArea, roles: 'CONSTRUCTION', active: true }),
-          User.findOne({ district: demand.district, area: demand.acceptArea, roles: 'SUPERVISOR', active: true })
+        [designUsers, constructionUsers, supervisorUsers] = await Promise.all([
+          User.find({ district: demand.district, area: demand.acceptArea, roles: 'DESIGN', active: true }),
+          User.find({ district: demand.district, area: demand.acceptArea, roles: 'CONSTRUCTION', active: true }),
+          User.find({ district: demand.district, area: demand.acceptArea, roles: 'SUPERVISOR', active: true })
         ]);
       }
+      const designUser = designUsers[0] || null;
+      const constructionUser = constructionUsers[0] || null;
+      const supervisorUser = supervisorUsers[0] || null;
 
       demand.assignedDesignUnit = designUser ? designUser._id : null;
       demand.assignedConstructionUnit = constructionUser ? constructionUser._id : null;
       demand.assignedSupervisor = supervisorUser ? supervisorUser._id : null;
+      demand.assignedDesignUnits = designUsers.map(u => u._id);
+      demand.assignedConstructionUnits = constructionUsers.map(u => u._id);
+      demand.assignedSupervisors = supervisorUsers.map(u => u._id);
       demand.designAssignTime = designUser ? new Date() : null;
       // 找到设计人则进入设计中；否则清空 crossAreaReviewerId 让管理员重新指派
       if (designUser) {
@@ -751,11 +785,11 @@ router.post('/demand/cross-area-review', requireRole('GRID_MANAGER'), async (req
 
       demand.logs.push({
         content: `跨区域审核通过（审核人：${req.user.name}）${
-          designUser ? '，已指派设计单位：' + designUser.name : '，未找到设计候选人，已通知管理员手动指派'
+          designUsers.length ? '，已指派设计单位：' + namesOf(designUsers) : '，未找到设计候选人，已通知管理员手动指派'
         }${
-          constructionUser ? '，施工单位：' + constructionUser.name : ''
+          constructionUsers.length ? '，施工单位：' + namesOf(constructionUsers) : ''
         }${
-          supervisorUser ? '，监理：' + supervisorUser.name : ''
+          supervisorUsers.length ? '，监理：' + namesOf(supervisorUsers) : ''
         }`,
         operatorId: req.user._id,
         operatorName: req.user.name
@@ -786,12 +820,15 @@ router.post('/demand/cross-area-review', requireRole('GRID_MANAGER'), async (req
       status: demand.status,
       assignedDesignUnit: demand.assignedDesignUnit,
       assignedConstructionUnit: demand.assignedConstructionUnit,
-      assignedSupervisor: demand.assignedSupervisor
+      assignedSupervisor: demand.assignedSupervisor,
+      assignedDesignUnits: demand.assignedDesignUnits,
+      assignedConstructionUnits: demand.assignedConstructionUnits,
+      assignedSupervisors: demand.assignedSupervisors
     });
 
     // 站内消息
     if (approve && demand.status === '设计中') {
-      sendAssignMessages(demand, [demand.assignedDesignUnit, demand.assignedConstructionUnit, demand.assignedSupervisor]).catch(() => {});
+      sendAssignMessages(demand, getAllAssignedUserIds(demand)).catch(() => {});
     } else if (!approve) {
       sendRejectMessage(demand, demand.rejectionReason).catch(() => {});
     }
@@ -806,9 +843,9 @@ router.post('/demand/cross-area-review', requireRole('GRID_MANAGER'), async (req
  */
 router.get('/demand/pending', async (req, res, next) => {
   try {
-    const scope = await resolveVisibilityScope(req.user);
+    const scope = await resolveVisibilityScope(req.user, req.currentRole);
     const roles = req.user.roles || [];
-    const primaryRole = ROLE_PRIORITY.find((role) => roles.includes(role)) || roles[0] || 'FRONTLINE';
+    const primaryRole = req.currentRole || ROLE_PRIORITY.find((role) => roles.includes(role)) || roles[0] || 'FRONTLINE';
 
     // 构建基础实体范围过滤（与 list 路由一致）
     const entityFilter = {};
@@ -875,6 +912,9 @@ router.get('/demand/pending', async (req, res, next) => {
       .populate('assignedDesignUnit', 'name phone')
       .populate('assignedConstructionUnit', 'name phone')
       .populate('assignedSupervisor', 'name phone')
+      .populate('assignedDesignUnits', 'name phone')
+      .populate('assignedConstructionUnits', 'name phone')
+      .populate('assignedSupervisors', 'name phone')
       .populate('createdBy', 'name phone')
       .lean();
 

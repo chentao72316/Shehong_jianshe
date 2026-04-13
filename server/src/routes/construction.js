@@ -8,6 +8,7 @@ const { broadcastDemandUpdate } = require('../utils/websocket');
 const { sendStatusChangeMessages } = require('../utils/msgHelper');
 const { recalculateDemandDurations } = require('../utils/demand-duration');
 const { resolveDemandNetworkSupport } = require('../utils/network-manager-scope');
+const { isUserAssignedTo } = require('../utils/demand-assignment');
 
 const router = express.Router();
 
@@ -24,7 +25,7 @@ router.post('/construction/start', requireRole('CONSTRUCTION'), async (req, res,
     if (demand.status !== '施工中') {
       throw createError(400, '需求当前状态不允许开始施工');
     }
-    if (String(demand.assignedConstructionUnit) !== String(req.user._id) &&
+    if (!isUserAssignedTo(demand, req.user, 'assignedConstructionUnit', 'assignedConstructionUnits') &&
         !req.user.roles.includes('ADMIN')) {
       throw createError(403, '无权操作此需求');
     }
@@ -50,7 +51,10 @@ router.post('/construction/start', requireRole('CONSTRUCTION'), async (req, res,
       status: demand.status,
       assignedDesignUnit: demand.assignedDesignUnit,
       assignedConstructionUnit: demand.assignedConstructionUnit,
-      assignedSupervisor: demand.assignedSupervisor
+      assignedSupervisor: demand.assignedSupervisor,
+      assignedDesignUnits: demand.assignedDesignUnits,
+      assignedConstructionUnits: demand.assignedConstructionUnits,
+      assignedSupervisors: demand.assignedSupervisors
     });
   } catch (err) {
     next(err);
@@ -71,7 +75,7 @@ router.post('/construction/submit', requireRole('CONSTRUCTION'), async (req, res
     if (demand.status !== '施工中') {
       throw createError(400, '需求当前状态不允许提交施工结果');
     }
-    if (String(demand.assignedConstructionUnit) !== String(req.user._id) &&
+    if (!isUserAssignedTo(demand, req.user, 'assignedConstructionUnit', 'assignedConstructionUnits') &&
         !req.user.roles.includes('ADMIN')) {
       throw createError(403, '无权操作此需求');
     }
@@ -125,7 +129,10 @@ router.post('/construction/submit', requireRole('CONSTRUCTION'), async (req, res
       status: demand.status,
       assignedDesignUnit: demand.assignedDesignUnit,
       assignedConstructionUnit: demand.assignedConstructionUnit,
-      assignedSupervisor: demand.assignedSupervisor
+      assignedSupervisor: demand.assignedSupervisor,
+      assignedDesignUnits: demand.assignedDesignUnits,
+      assignedConstructionUnits: demand.assignedConstructionUnits,
+      assignedSupervisors: demand.assignedSupervisors
     });
   } catch (err) {
     next(err);

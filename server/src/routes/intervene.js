@@ -9,6 +9,7 @@ const { sendAssignMessages, sendStatusChangeMessages } = require('../utils/msgHe
 const { canUserAccessDemand } = require('../utils/demand-access');
 const { recalculateDemandDurations } = require('../utils/demand-duration');
 const { canNetworkManagerAccessDemand } = require('../utils/network-manager-scope');
+const { getAssignmentIds, namesOf } = require('../utils/demand-assignment');
 
 const router = express.Router();
 
@@ -47,12 +48,18 @@ router.post('/intervene/reassign', requireRole('NETWORK_MANAGER', 'ADMIN'), asyn
       supervisor: { field: 'assignedSupervisor', role: 'SUPERVISOR', label: '监理单位' }
     };
     const { field, role, label } = fieldMap[unitType];
+    const multiFieldMap = {
+      design: 'assignedDesignUnits',
+      construction: 'assignedConstructionUnits',
+      supervisor: 'assignedSupervisors'
+    };
 
     if (!targetUser.roles.includes(role)) {
       throw createError(400, `该用户没有 ${label} 角色`);
     }
 
     demand[field] = userId;
+    demand[multiFieldMap[unitType]] = [userId];
 
     if (unitType === 'design' && demand.status === '待审核') {
       demand.designAssignTime = new Date();
@@ -84,7 +91,10 @@ router.post('/intervene/reassign', requireRole('NETWORK_MANAGER', 'ADMIN'), asyn
       status: demand.status,
       assignedDesignUnit: demand.assignedDesignUnit,
       assignedConstructionUnit: demand.assignedConstructionUnit,
-      assignedSupervisor: demand.assignedSupervisor
+      assignedSupervisor: demand.assignedSupervisor,
+      assignedDesignUnits: demand.assignedDesignUnits,
+      assignedConstructionUnits: demand.assignedConstructionUnits,
+      assignedSupervisors: demand.assignedSupervisors
     });
 
     sendAssignMessages(demand, [targetUser._id]).catch(() => {});
@@ -135,7 +145,10 @@ router.post('/intervene/force-status', requireRole('ADMIN'), async (req, res, ne
       status: demand.status,
       assignedDesignUnit: demand.assignedDesignUnit,
       assignedConstructionUnit: demand.assignedConstructionUnit,
-      assignedSupervisor: demand.assignedSupervisor
+      assignedSupervisor: demand.assignedSupervisor,
+      assignedDesignUnits: demand.assignedDesignUnits,
+      assignedConstructionUnits: demand.assignedConstructionUnits,
+      assignedSupervisors: demand.assignedSupervisors
     });
   } catch (err) {
     next(err);
@@ -227,8 +240,10 @@ router.post('/intervene/confirm', requireRole('NETWORK_MANAGER', 'ADMIN'), async
       demand.constructionAssignTime = new Date();
       demand.confirmRejectReason = rejectReason;
       let constructionStr = '';
-      if (demand.assignedConstructionUnit) {
-        const constructionUser = await User.findById(demand.assignedConstructionUnit, 'name').lean();
+      const constructionIds = getAssignmentIds(demand, 'assignedConstructionUnit', 'assignedConstructionUnits');
+      if (constructionIds.length) {
+        const constructionUsers = await User.find({ _id: { $in: constructionIds } }, 'name').lean();
+        const constructionUser = { name: namesOf(constructionUsers) };
         if (constructionUser?.name) constructionStr = `，退回施工单位：${constructionUser.name}`;
       }
       demand.logs.push({
@@ -241,7 +256,7 @@ router.post('/intervene/confirm', requireRole('NETWORK_MANAGER', 'ADMIN'), async
 
       const { syncDemandWithPopulate } = require('../utils/feishu-bitable');
       syncDemandWithPopulate(demand).catch(() => {});
-      sendStatusChangeMessages(demand, [demand.assignedConstructionUnit], '施工验收未通过，请重新施工').catch(() => {});
+      sendStatusChangeMessages(demand, getAssignmentIds(demand, 'assignedConstructionUnit', 'assignedConstructionUnits'), '施工验收未通过，请重新施工').catch(() => {});
     }
 
     res.json({ code: 0, data: { status: demand.status } });
@@ -253,7 +268,10 @@ router.post('/intervene/confirm', requireRole('NETWORK_MANAGER', 'ADMIN'), async
       status: demand.status,
       assignedDesignUnit: demand.assignedDesignUnit,
       assignedConstructionUnit: demand.assignedConstructionUnit,
-      assignedSupervisor: demand.assignedSupervisor
+      assignedSupervisor: demand.assignedSupervisor,
+      assignedDesignUnits: demand.assignedDesignUnits,
+      assignedConstructionUnits: demand.assignedConstructionUnits,
+      assignedSupervisors: demand.assignedSupervisors
     });
   } catch (err) {
     next(err);
