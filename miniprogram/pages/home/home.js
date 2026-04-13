@@ -31,8 +31,12 @@ Page({
   },
 
   onLoad() {
+    this.refreshRoleState();
+  },
+
+  refreshRoleState() {
     const app = getApp();
-    const currentRole = app.globalData.currentRole;
+    const currentRole = app.globalData.currentRole || wx.getStorageSync('currentRole') || '';
     const userInfo = app.globalData.userInfo;
     const roleLabel = ROLES[currentRole] || currentRole;
     const parts = [userInfo?.area, userInfo?.gridName, roleLabel].filter(Boolean);
@@ -50,6 +54,7 @@ Page({
   },
 
   onShow() {
+    this.refreshRoleState();
     if (typeof this.getTabBar === 'function' && this.getTabBar()) {
       const tabBar = this.getTabBar();
       // 刷新 Tab 列表（切换角色后 Tab2 可能已变化）

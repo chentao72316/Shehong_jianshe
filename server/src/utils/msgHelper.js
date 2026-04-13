@@ -5,6 +5,7 @@
  */
 const Message = require('../models/message.model');
 const { logger } = require('./logger');
+const { uniqueIds } = require('./demand-assignment');
 
 /**
  * 批量写入站内消息（忽略重复/部分失败）
@@ -36,8 +37,7 @@ function buildMsg(recipientId, title, content, type, demand) {
  * @param {Array}  recipientIds  - ObjectId 数组（可含 null，会被过滤）
  */
 async function sendAssignMessages(demand, recipientIds) {
-  const msgs = (recipientIds || [])
-    .filter(Boolean)
+  const msgs = uniqueIds(recipientIds || [])
     .map(rid => buildMsg(
       rid,
       `【工单指派】${demand.demandNo}`,
@@ -55,8 +55,7 @@ async function sendAssignMessages(demand, recipientIds) {
  * @param {string} statusDesc   - 变更描述，如 "已确认开通"
  */
 async function sendStatusChangeMessages(demand, recipientIds, statusDesc) {
-  const msgs = (recipientIds || [])
-    .filter(Boolean)
+  const msgs = uniqueIds(recipientIds || [])
     .map(rid => buildMsg(
       rid,
       `【状态更新】${demand.demandNo}`,

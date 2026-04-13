@@ -4,6 +4,7 @@ const { createError } = require('../middleware/error-handler');
 const { requireRole } = require('../middleware/auth');
 const { logger } = require('../utils/logger');
 const { broadcastDemandUpdate } = require('../utils/websocket');
+const { isUserAssignedTo } = require('../utils/demand-assignment');
 
 const router = express.Router();
 
@@ -20,7 +21,7 @@ router.post('/supervisor/submit', requireRole('SUPERVISOR'), async (req, res, ne
     if (!['待确认', '已开通'].includes(demand.status)) {
       throw createError(400, '当前状态不允许提交监理验收信息');
     }
-    if (String(demand.assignedSupervisor) !== String(req.user._id) &&
+    if (!isUserAssignedTo(demand, req.user, 'assignedSupervisor', 'assignedSupervisors') &&
         !req.user.roles.includes('ADMIN')) {
       throw createError(403, '无权操作此需求');
     }
@@ -53,7 +54,10 @@ router.post('/supervisor/submit', requireRole('SUPERVISOR'), async (req, res, ne
       status: demand.status,
       assignedDesignUnit: demand.assignedDesignUnit,
       assignedConstructionUnit: demand.assignedConstructionUnit,
-      assignedSupervisor: demand.assignedSupervisor
+      assignedSupervisor: demand.assignedSupervisor,
+      assignedDesignUnits: demand.assignedDesignUnits,
+      assignedConstructionUnits: demand.assignedConstructionUnits,
+      assignedSupervisors: demand.assignedSupervisors
     });
   } catch (err) {
     next(err);

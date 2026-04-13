@@ -127,18 +127,24 @@ async function broadcastDemandUpdate(demandId, data) {
   // 仅向明确相关人员点对点推送，避免按角色房间泄露非本人指派工单
   try {
     const demand = await Demand.findById(demandId)
-      .select('createdBy assignedDesignUnit assignedConstructionUnit assignedSupervisor crossAreaReviewerId')
+      .select('createdBy assignedDesignUnit assignedConstructionUnit assignedSupervisor assignedDesignUnits assignedConstructionUnits assignedSupervisors crossAreaReviewerId')
       .lean();
     const recipients = new Set([
       demand?.createdBy,
       demand?.assignedDesignUnit,
       demand?.assignedConstructionUnit,
       demand?.assignedSupervisor,
+      ...(demand?.assignedDesignUnits || []),
+      ...(demand?.assignedConstructionUnits || []),
+      ...(demand?.assignedSupervisors || []),
       demand?.crossAreaReviewerId,
       data.createdBy,
       data.assignedDesignUnit,
       data.assignedConstructionUnit,
       data.assignedSupervisor,
+      ...(data.assignedDesignUnits || []),
+      ...(data.assignedConstructionUnits || []),
+      ...(data.assignedSupervisors || []),
       data.crossAreaReviewerId
     ].filter(Boolean).map(id => String(id)));
 

@@ -32,6 +32,9 @@ const demandSchema = new mongoose.Schema({
   assignedDesignUnit: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   assignedConstructionUnit: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   assignedSupervisor: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  assignedDesignUnits: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  assignedConstructionUnits: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  assignedSupervisors: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   // 时间节点
   designAssignTime: { type: Date },
   constructionAssignTime: { type: Date },
@@ -100,6 +103,9 @@ demandSchema.index({ district: 1, acceptArea: 1, status: 1 });
 demandSchema.index({ acceptArea: 1, status: 1 });
 demandSchema.index({ assignedDesignUnit: 1, status: 1 });
 demandSchema.index({ assignedConstructionUnit: 1, status: 1 });
+demandSchema.index({ assignedDesignUnits: 1, status: 1 });
+demandSchema.index({ assignedConstructionUnits: 1, status: 1 });
+demandSchema.index({ assignedSupervisors: 1, status: 1 });
 demandSchema.index({ createdBy: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Demand', demandSchema);

@@ -62,7 +62,9 @@ async function runTimeoutCheck() {
         { lastDesignTimeoutNotifyAt: { $exists: false } },
         { lastDesignTimeoutNotifyAt: { $lt: notifyThreshold } }
       ]
-    }).populate('assignedDesignUnit', 'name feishuId');
+    })
+      .populate('assignedDesignUnit', 'name feishuId')
+      .populate('assignedDesignUnits', 'name feishuId');
 
     for (const demand of designDemands) {
       demand.logs.push({
@@ -108,7 +110,9 @@ async function runTimeoutCheck() {
         { lastConstructionTimeoutNotifyAt: { $exists: false } },
         { lastConstructionTimeoutNotifyAt: { $lt: notifyThreshold } }
       ]
-    }).populate('assignedConstructionUnit', 'name feishuId');
+    })
+      .populate('assignedConstructionUnit', 'name feishuId')
+      .populate('assignedConstructionUnits', 'name feishuId');
 
     for (const demand of constructionDemands) {
       demand.logs.push({

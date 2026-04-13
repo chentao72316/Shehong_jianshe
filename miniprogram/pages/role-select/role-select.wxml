@@ -1,6 +1,6 @@
 <view class="page-container">
   <view class="welcome-area">
-    <text class="welcome-text">你好，{{userInfo.name}}</text>
+    <text class="welcome-text">您好，{{userInfo.name}}</text>
     <text class="welcome-tip">请选择当前使用的角色</text>
   </view>
 

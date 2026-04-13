@@ -9,6 +9,7 @@ const { notifyDesignComplete, notifyConstructionConfirm } = require('../utils/no
 const { broadcastDemandUpdate } = require('../utils/websocket');
 const { sendAssignMessages, sendStatusChangeMessages } = require('../utils/msgHelper');
 const { recalculateDemandDurations } = require('../utils/demand-duration');
+const { getAssignmentIds, isUserAssignedTo, namesOf } = require('../utils/demand-assignment');
 
 const router = express.Router();
 
@@ -27,7 +28,7 @@ router.post('/design/submit', requireRole('DESIGN'), async (req, res, next) => {
     if (demand.status !== '设计中') {
       throw createError(400, '需求当前状态不允许提交查勘结果');
     }
-    if (String(demand.assignedDesignUnit) !== String(req.user._id) &&
+    if (!isUserAssignedTo(demand, req.user, 'assignedDesignUnit', 'assignedDesignUnits') &&
         !req.user.roles.includes('ADMIN')) {
       throw createError(403, '无权操作此需求');
     }
@@ -61,8 +62,10 @@ router.post('/design/submit', requireRole('DESIGN'), async (req, res, next) => {
       demand.constructionAssignTime = now;
       // 查询施工单位姓名，写入日志便于追踪
       let constructionStr = '';
-      if (demand.assignedConstructionUnit) {
-        const constructionUser = await User.findById(demand.assignedConstructionUnit, 'name').lean();
+      const constructionIds = getAssignmentIds(demand, 'assignedConstructionUnit', 'assignedConstructionUnits');
+      if (constructionIds.length) {
+        const constructionUsers = await User.find({ _id: { $in: constructionIds } }, 'name').lean();
+        const constructionUser = { name: namesOf(constructionUsers) };
         if (constructionUser?.name) {
           constructionStr = `，流转至施工单位：${constructionUser.name}`;
         }
@@ -85,7 +88,7 @@ router.post('/design/submit', requireRole('DESIGN'), async (req, res, next) => {
       sendStatusChangeMessages(demand, [demand.createdBy], '设计查勘完成，您的工单等待开通确认').catch(() => {});
     } else {
       notifyDesignComplete(demand).catch(() => {});
-      sendAssignMessages(demand, [demand.assignedConstructionUnit]).catch(() => {});
+      sendAssignMessages(demand, getAssignmentIds(demand, 'assignedConstructionUnit', 'assignedConstructionUnits')).catch(() => {});
       sendStatusChangeMessages(demand, [demand.createdBy], '设计查勘完成，工单已进入施工阶段').catch(() => {});
     }
 
@@ -100,7 +103,10 @@ router.post('/design/submit', requireRole('DESIGN'), async (req, res, next) => {
       status: demand.status,
       assignedDesignUnit: demand.assignedDesignUnit,
       assignedConstructionUnit: demand.assignedConstructionUnit,
-      assignedSupervisor: demand.assignedSupervisor
+      assignedSupervisor: demand.assignedSupervisor,
+      assignedDesignUnits: demand.assignedDesignUnits,
+      assignedConstructionUnits: demand.assignedConstructionUnits,
+      assignedSupervisors: demand.assignedSupervisors
     });
   } catch (err) {
     next(err);

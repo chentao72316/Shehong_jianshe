@@ -9,6 +9,7 @@ function debugLog(...args) {
 function request(options) {
   const app = getApp();
   const token = app.globalData.token;
+  const currentRole = app.globalData.currentRole || wx.getStorageSync('currentRole') || '';
   debugLog('=== request ===');
   debugLog('URL:', app.globalData.serverUrl + options.url);
   debugLog('Token存在:', !!token);
@@ -21,7 +22,8 @@ function request(options) {
       data: options.data || {},
       header: {
         'Content-Type': 'application/json',
-        'Authorization': token ? `Bearer ${token}` : ''
+        'Authorization': token ? `Bearer ${token}` : '',
+        'X-Current-Role': currentRole
       },
       success(res) {
         debugLog('响应statusCode:', res.statusCode);
