@@ -7,8 +7,8 @@ App({
     serverUrl: '',
     apiHosts: {
       develop: 'http://localhost:3000',
-      trial: 'https://your-api-domain.example.com',
-      release: 'https://your-api-domain.example.com'
+      trial: 'https://api.sndqt.cn',
+      release: 'https://api.sndqt.cn'
     },
     pendingPasswordChange: null  // 首次登录标记（跳转 profile 设置密码用）
   },
