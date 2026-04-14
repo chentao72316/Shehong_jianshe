@@ -96,6 +96,7 @@ router.post('/construction/submit', requireRole('CONSTRUCTION'), async (req, res
 
     // 施工完成，流转为待网络支撑经理确认
     demand.status = '待确认';
+    demand.confirmPendingTime = new Date();
     // 查询该区域的网络支撑经理姓名，写入日志便于追踪
     const areaCfg = await AreaConfig.findOne({ acceptArea: demand.acceptArea, district: demand.district })
       .populate('networkManagerId', 'name').lean();

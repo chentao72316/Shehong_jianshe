@@ -11,6 +11,7 @@ const { logger } = require('./logger');
 const { fmtDate, fmtDuration } = require('./format');
 const { inferCompletionMode, getCompletionModeLabel } = require('./completion-mode');
 const { recalculateDemandDurations } = require('./demand-duration');
+const { EVENT_META } = require('./timeout-policy');
 
 const BITABLE_BASE_URL = 'https://open.feishu.cn/open-apis/bitable/v1';
 
@@ -51,6 +52,7 @@ const FEISHU_FIELD_TYPE_HINTS = {
   '监理验收时间': '日期时间',
   '监理备注': '多行文本',
   '确认人': '单行文本',
+  '开通确认开始时间': '日期时间',
   '确认时间': '日期时间',
   '确认驳回原因': '多行文本',
   '开通方式': '单选',
@@ -65,6 +67,10 @@ const FEISHU_FIELD_TYPE_HINTS = {
   '总历时': '单行文本',
   '完成时间': '日期时间',
   '最终状态': '单选',
+  '自动督办状态': '单行文本',
+  '自动督办停止原因': '多行文本',
+  '自动督办停止时间': '日期时间',
+  '自动督办停止人': '单行文本',
   '操作日志': '多行文本',
   '预约客户数': '数字',
   'DP箱数量': '数字',
@@ -173,6 +179,14 @@ function buildFeishuErrorHint(feishuResponse) {
   }
 
   return null;
+}
+
+function getAutoReminderStatusText(demand) {
+  if (demand.autoReminderMutedAll) return '全部停止';
+  const mutedTypes = demand.autoReminderMutedTypes || [];
+  if (!mutedTypes.length) return '正常发送';
+  const labels = mutedTypes.map((type) => EVENT_META[type]?.label || type);
+  return `已停止：${labels.join('、')}`;
 }
 
 /**
@@ -303,6 +317,7 @@ async function buildFields(demand, appToken) {
     '监理验收时间': toFeishuTimestamp(demand.supervisorVerifyTime),
     '监理备注': demand.supervisorRemark || '-',
     '确认人': typeof demand.confirmBy === 'object' ? (demand.confirmBy?.name || '-') : '-',
+    '开通确认开始时间': toFeishuTimestamp(demand.confirmPendingTime),
     '确认时间': toFeishuTimestamp(demand.confirmTime),
     '确认驳回原因': demand.confirmRejectReason || '-',
     '开通方式': getCompletionModeLabel(completionMode) || '-',
@@ -316,6 +331,10 @@ async function buildFields(demand, appToken) {
     '跨区审核意见': demand.crossAreaApproveNote || '-',
     '总历时': fmtDuration(demand.totalDuration),
     '完成时间': toFeishuTimestamp(demand.completedTime),
+    '自动督办状态': getAutoReminderStatusText(demand),
+    '自动督办停止原因': demand.autoReminderMuteReason || '-',
+    '自动督办停止时间': toFeishuTimestamp(demand.autoReminderMutedAt),
+    '自动督办停止人': typeof demand.autoReminderMutedBy === 'object' ? (demand.autoReminderMutedBy?.name || '-') : '-',
     '操作日志': logsText || '-'
   };
 
@@ -327,9 +346,11 @@ async function buildFields(demand, appToken) {
   if (fields['设计指派时间'] == null) delete fields['设计指派时间'];
   if (fields['施工指派时间'] == null) delete fields['施工指派时间'];
   if (fields['监理验收时间'] == null) delete fields['监理验收时间'];
+  if (fields['开通确认开始时间'] == null) delete fields['开通确认开始时间'];
   if (fields['确认时间'] == null) delete fields['确认时间'];
   if (fields['驳回时间'] == null) delete fields['驳回时间'];
   if (fields['完成时间'] == null) delete fields['完成时间'];
+  if (fields['自动督办停止时间'] == null) delete fields['自动督办停止时间'];
   if (demand.constructionLat == null) delete fields['完工纬度'];
   if (demand.constructionLng == null) delete fields['完工经度'];
   if (!demand.rejectType) delete fields['驳回类型'];
@@ -430,6 +451,7 @@ const POPULATE_FIELDS = [
   { path: 'assignedConstructionUnit', select: 'name' },
   { path: 'assignedSupervisor',       select: 'name' },
   { path: 'confirmBy',                select: 'name' },
+  { path: 'autoReminderMutedBy',      select: 'name' },
   { path: 'rejectedBy',               select: 'name' },
   { path: 'crossAreaReviewerId',      select: 'name' }
 ];

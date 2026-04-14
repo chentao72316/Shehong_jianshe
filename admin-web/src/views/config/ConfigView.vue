@@ -97,9 +97,69 @@
               <span class="unit-label">天</span>
             </el-form-item>
           </el-col>
+          <el-col :span="12">
+            <el-form-item label="跨区审核超时">
+              <el-input-number
+                v-model="timeoutForm.crossAreaAuditTimeoutDays"
+                :min="0.5" :max="30" :step="0.5" :precision="1"
+                style="width: 140px"
+              />
+              <span class="unit-label">天</span>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="跨区审核预警">
+              <el-input-number
+                v-model="timeoutForm.crossAreaAuditWarningDays"
+                :min="0.5" :max="30" :step="0.5" :precision="1"
+                style="width: 140px"
+              />
+              <span class="unit-label">天</span>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="开通确认超时">
+              <el-input-number
+                v-model="timeoutForm.confirmationTimeoutDays"
+                :min="0.5" :max="30" :step="0.5" :precision="1"
+                style="width: 140px"
+              />
+              <span class="unit-label">天</span>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="开通确认预警">
+              <el-input-number
+                v-model="timeoutForm.confirmationWarningDays"
+                :min="0.5" :max="30" :step="0.5" :precision="1"
+                style="width: 140px"
+              />
+              <span class="unit-label">天</span>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="总体超时天数">
+              <el-input-number
+                v-model="timeoutForm.overallTimeoutDays"
+                :min="minOverallTimeoutDays" :max="120" :step="0.5" :precision="1"
+                style="width: 140px"
+              />
+              <span class="unit-label">天</span>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="总体预警天数">
+              <el-input-number
+                v-model="timeoutForm.overallWarningDays"
+                :min="0.5" :max="120" :step="0.5" :precision="1"
+                style="width: 140px"
+              />
+              <span class="unit-label">天</span>
+            </el-form-item>
+          </el-col>
         </el-row>
         <el-alert type="info" :closable="false" style="margin-top: 4px;">
-          修改后需重启服务端才能使超时检查任务生效。预警天数须小于对应超时天数。
+          超时检查每小时执行一次。预警天数须小于对应超时天数；总体超时天数须不小于设计超时天数与施工超时天数之和。
         </el-alert>
       </el-form>
     </el-card>
@@ -284,7 +344,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { UploadFilled, View, Hide } from '@element-plus/icons-vue'
 import { getConfigList, updateConfig, deleteConfig, batchImportConfig, type ConfigItem } from '@/api/config'
@@ -320,8 +380,30 @@ const timeoutForm = ref({
   designTimeoutDays:      2,
   constructionTimeoutDays: 5,
   designWarningDays:      1.5,
-  constructionWarningDays: 4
+  constructionWarningDays: 4,
+  crossAreaAuditTimeoutDays: 1,
+  crossAreaAuditWarningDays: 0.5,
+  confirmationTimeoutDays: 1,
+  confirmationWarningDays: 0.5,
+  overallTimeoutDays: 7,
+  overallWarningDays: 6
 })
+
+const minOverallTimeoutDays = computed(() =>
+  Number(timeoutForm.value.designTimeoutDays || 0) + Number(timeoutForm.value.constructionTimeoutDays || 0)
+)
+
+watch(
+  () => [timeoutForm.value.designTimeoutDays, timeoutForm.value.constructionTimeoutDays],
+  () => {
+    if (timeoutForm.value.overallTimeoutDays < minOverallTimeoutDays.value) {
+      timeoutForm.value.overallTimeoutDays = minOverallTimeoutDays.value
+    }
+    if (timeoutForm.value.overallWarningDays >= timeoutForm.value.overallTimeoutDays) {
+      timeoutForm.value.overallWarningDays = Math.max(0.5, timeoutForm.value.overallTimeoutDays - 0.5)
+    }
+  }
+)
 
 // ── 卡片2：映射配置 ───────────────────────────────────────
 const savingMapping = ref(false)
@@ -395,7 +477,13 @@ const syncTimeoutForm = () => {
       designTimeoutDays:       cfg.value.designTimeoutDays       ?? 2,
       constructionTimeoutDays: cfg.value.constructionTimeoutDays ?? 5,
       designWarningDays:       cfg.value.designWarningDays       ?? 1.5,
-      constructionWarningDays: cfg.value.constructionWarningDays ?? 4
+      constructionWarningDays: cfg.value.constructionWarningDays ?? 4,
+      crossAreaAuditTimeoutDays: cfg.value.crossAreaAuditTimeoutDays ?? 1,
+      crossAreaAuditWarningDays: cfg.value.crossAreaAuditWarningDays ?? 0.5,
+      confirmationTimeoutDays: cfg.value.confirmationTimeoutDays ?? 1,
+      confirmationWarningDays: cfg.value.confirmationWarningDays ?? 0.5,
+      overallTimeoutDays: cfg.value.overallTimeoutDays ?? 7,
+      overallWarningDays: cfg.value.overallWarningDays ?? 6
     }
   }
 }
@@ -462,7 +550,18 @@ const saveFastgptConfig = async () => {
 
 // ── 卡片1 操作 ────────────────────────────────────────────
 const saveTimeoutConfig = async () => {
-  const { designWarningDays, designTimeoutDays, constructionWarningDays, constructionTimeoutDays } = timeoutForm.value
+  const {
+    designWarningDays,
+    designTimeoutDays,
+    constructionWarningDays,
+    constructionTimeoutDays,
+    crossAreaAuditWarningDays,
+    crossAreaAuditTimeoutDays,
+    confirmationWarningDays,
+    confirmationTimeoutDays,
+    overallWarningDays,
+    overallTimeoutDays
+  } = timeoutForm.value
   if (designWarningDays >= designTimeoutDays) {
     ElMessage.warning('设计预警天数须小于设计超时天数')
     return
@@ -471,12 +570,28 @@ const saveTimeoutConfig = async () => {
     ElMessage.warning('施工预警天数须小于施工超时天数')
     return
   }
+  if (crossAreaAuditWarningDays >= crossAreaAuditTimeoutDays) {
+    ElMessage.warning('跨区审核预警天数须小于跨区审核超时天数')
+    return
+  }
+  if (confirmationWarningDays >= confirmationTimeoutDays) {
+    ElMessage.warning('开通确认预警天数须小于开通确认超时天数')
+    return
+  }
+  if (overallWarningDays >= overallTimeoutDays) {
+    ElMessage.warning('总体预警天数须小于总体超时天数')
+    return
+  }
+  if (overallTimeoutDays < designTimeoutDays + constructionTimeoutDays) {
+    ElMessage.warning('总体超时天数须不小于设计超时天数与施工超时天数之和')
+    return
+  }
   savingTimeout.value = true
   try {
     await updateConfig(KEY_TIMEOUT, {
       value: { ...timeoutForm.value },
       label: '超时阈值配置',
-      description: '设计超时天数、施工超时天数、预警天数。修改后需重启服务生效。'
+      description: '设计、施工、跨区审核、开通确认、总体超时与预警天数配置。'
     })
     ElMessage.success('超时阈值保存成功')
     loadConfigs()

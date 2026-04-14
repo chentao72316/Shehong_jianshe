@@ -83,6 +83,11 @@
     <text class="login-tip">登录即代表您已阅读并同意相关服务协议</text>
   </view>
 
+  <view class="page-footer">
+    <text class="footer-text">版权所有@旦求誊</text>
+    <text class="footer-text">蜀ICP备2025155786号-2X</text>
+  </view>
+
   <!-- 绑定手机号弹窗（微信登录未绑定时显示） -->
   <view class="mask" wx:if="{{showBindModal}}" bindtap="onCancelBind"></view>
   <view class="bind-modal" wx:if="{{showBindModal}}">

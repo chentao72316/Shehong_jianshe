@@ -7,7 +7,8 @@ const { createError } = require('../middleware/error-handler');
 const { requireRole } = require('../middleware/auth');
 const { logger } = require('../utils/logger');
 const { fmtDate, fmtDuration } = require('../utils/format');
-const { getDistrictFilter, getDistrictFromBody } = require('../utils/district');
+const { hashPassword } = require('../utils/password');
+const { DISTRICTS, getDistrictFilter, getDistrictFromBody } = require('../utils/district');
 const { getAssignedOrProcessedDemandFilter } = require('../utils/pc-access');
 const { buildNetworkManagerDemandFilter, mergeFilter } = require('../utils/network-manager-scope');
 
@@ -33,6 +34,8 @@ const VALID_ROLES = ['FRONTLINE', 'DISTRICT_MANAGER', 'DEPT_MANAGER', 'LEVEL4_MA
 const STAFF_VIEW_ROLES = ['ADMIN', 'DISTRICT_MANAGER', 'LEVEL4_MANAGER'];
 const STAFF_MANAGE_ROLES = ['ADMIN', 'DISTRICT_MANAGER'];
 const DISTRICT_ASSIGNABLE_ROLES = VALID_ROLES.filter((role) => role !== 'ADMIN');
+const CROSS_DISTRICT_SERVICE_ROLES = ['DESIGN', 'CONSTRUCTION', 'SUPERVISOR'];
+const DEFAULT_STAFF_PASSWORD = process.env.DEFAULT_STAFF_PASSWORD || '12345678';
 
 const roleCodeToName = {
   FRONTLINE: '一线人员',
@@ -58,6 +61,32 @@ function assertSameDistrict(req, district) {
   }
 }
 
+function parseDistrictList(value) {
+  const rawList = Array.isArray(value)
+    ? value
+    : String(value || '').split(/[、/，,\s]+/);
+  return [...new Set(rawList.map((item) => String(item || '').trim()).filter(Boolean))]
+    .filter((district) => DISTRICTS.includes(district));
+}
+
+function normalizeServiceDistricts(value, homeDistrict) {
+  const districts = parseDistrictList(value);
+  const fallbackHomeDistrict = DISTRICTS.includes(homeDistrict) ? homeDistrict : '射洪市';
+  if (!districts.includes(fallbackHomeDistrict)) districts.unshift(fallbackHomeDistrict);
+  return districts;
+}
+
+function getStaffDistrictFilter(req, role, includeServiceDistrict) {
+  const district = isAdminUser(req)
+    ? req.query.district
+    : (req.user?.district || '射洪市');
+  if (!district) return {};
+  if (includeServiceDistrict && CROSS_DISTRICT_SERVICE_ROLES.includes(role)) {
+    return { $or: [{ district }, { serviceDistricts: district }] };
+  }
+  return { district };
+}
+
 async function getScopedUserOrThrow(req, userId) {
   const user = await User.findById(userId);
   if (!user) throw createError(404, '用户不存在');
@@ -75,6 +104,7 @@ async function getScopedUserOrThrow(req, userId) {
 router.get('/admin/staff', requireRole(...STAFF_VIEW_ROLES), async (req, res, next) => {
   try {
     const { page = 1, pageSize = 20, role, keyword } = req.query;
+    const includeServiceDistrict = req.query.includeServiceDistrict === '1' || req.query.includeServiceDistrict === 'true';
     const { page: p, pageSize: ps } = parsePagination(page, pageSize);
     const skip = (p - 1) * ps;
 
@@ -87,12 +117,11 @@ router.get('/admin/staff', requireRole(...STAFF_VIEW_ROLES), async (req, res, ne
         { phone: { $regex: safeKeyword } }
       ];
     }
-    // 鍖哄幙杩囨护
-    Object.assign(query, getDistrictFilter(req));
+    const finalQuery = mergeFilter(query, getStaffDistrictFilter(req, role, includeServiceDistrict));
 
     const [total, list] = await Promise.all([
-      User.countDocuments(query),
-      User.find(query)
+      User.countDocuments(finalQuery),
+      User.find(finalQuery)
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(ps)
@@ -115,7 +144,7 @@ router.get('/admin/staff', requireRole(...STAFF_VIEW_ROLES), async (req, res, ne
  */
 router.post('/admin/staff/save', requireRole(...STAFF_MANAGE_ROLES), async (req, res, next) => {
   try {
-    const { userId, name, phone, roles, area, gridName, feishuId, wxAccount, employeeId, staffType, active } = req.body;
+    const { userId, name, phone, roles, area, gridName, feishuId, wxAccount, employeeId, staffType, active, serviceDistricts } = req.body;
 
     if (!name || !phone) throw createError(400, '姓名和手机号为必填项');
     if (!/^1[3-9]\d{9}$/.test(phone)) throw createError(400, '手机号格式不正确');
@@ -136,6 +165,8 @@ router.post('/admin/staff/save', requireRole(...STAFF_MANAGE_ROLES), async (req,
       const existing = await User.findOne({ phone });
       if (existing) throw createError(409, '该手机号已存在');
       user = new User();
+      user.password = await hashPassword(DEFAULT_STAFF_PASSWORD);
+      user.passwordChanged = false;
     }
 
     user.name = name;
@@ -147,7 +178,12 @@ router.post('/admin/staff/save', requireRole(...STAFF_MANAGE_ROLES), async (req,
     user.wxAccount = wxAccount || '';
     user.employeeId = employeeId || '';
     user.staffType = staffType || '';
-    user.district = getDistrictFromBody(req);
+    const nextDistrict = getDistrictFromBody(req);
+    if (!DISTRICTS.includes(nextDistrict)) throw createError(400, '区县不在可选范围内');
+    user.district = nextDistrict;
+    user.serviceDistricts = isAdminUser(req)
+      ? normalizeServiceDistricts(serviceDistricts, user.district)
+      : normalizeServiceDistricts(user.serviceDistricts, user.district);
     if (typeof active === 'boolean') user.active = active;
 
     await user.save();
@@ -286,7 +322,7 @@ router.get('/admin/staff/export', requireRole(...STAFF_VIEW_ROLES), async (req, 
     const users = await User.find(getDistrictFilter(req)).sort({ createdAt: -1 }).lean();
 
     // CSV 琛ㄥご
-    const headers = ['姓名', '手机号', '微信号', '飞书账号', '单位', '部门/网格', '工号', '人员属性', '角色', '状态'];
+    const headers = ['姓名', '手机号', '微信号', '飞书账号', '区县', '可服务区县', '单位', '部门/网格', '工号', '人员属性', '角色', '状态'];
 
     // CSV 鏁版嵁琛?
     const rows = users.map(u => [
@@ -294,12 +330,14 @@ router.get('/admin/staff/export', requireRole(...STAFF_VIEW_ROLES), async (req, 
       u.phone || '',
       u.wxAccount || '',
       u.feishuId || '',
+      u.district || '',
+      normalizeServiceDistricts(u.serviceDistricts, u.district).join('/'),
       u.area || '',
       u.gridName || '',
       u.employeeId || '',
       u.staffType || '',
       (u.roles || []).map(r => roleCodeToName[r] || r).join('/'),
-      u.active ? '鍚敤' : '绂佺敤'
+      u.active ? '启用' : '禁用'
     ]);
 
     // 杞箟CSV瀛楁锛堝鐞嗛€楀彿銆佸紩鍙风瓑锛?
@@ -381,6 +419,8 @@ router.post('/admin/staff/import', requireRole('ADMIN'), async (req, res, next) 
         const phone = String(row['手机号'] || '').trim();
         const wxAccount = String(row['微信号'] || '').trim();
         const feishuId = String(row['飞书账号'] || '').trim();
+        const district = String(row['区县'] || '').trim();
+        const serviceDistricts = parseDistrictList(row['可服务区县']);
         const area = String(row['单位'] || '').trim();
         const gridName = String(row['部门/网格'] || '').trim();
         const employeeId = String(row['工号'] || '').trim();
@@ -405,6 +445,10 @@ router.post('/admin/staff/import', requireRole('ADMIN'), async (req, res, next) 
           }
           if (wxAccount) user.wxAccount = wxAccount;
           if (feishuId) user.feishuId = feishuId;
+          if (district && DISTRICTS.includes(district)) user.district = district;
+          if (serviceDistricts.length || district) {
+            user.serviceDistricts = normalizeServiceDistricts(serviceDistricts, user.district);
+          }
           if (area) user.area = area;
           if (gridName) user.gridName = gridName;
           if (employeeId) user.employeeId = employeeId;
@@ -431,6 +475,7 @@ router.post('/admin/staff/import', requireRole('ADMIN'), async (req, res, next) 
             continue;
           }
 
+          const userDistrict = getDistrictFromBody(req, { district: DISTRICTS.includes(district) ? district : undefined });
           user = new User({
             name,
             phone,
@@ -442,8 +487,11 @@ router.post('/admin/staff/import', requireRole('ADMIN'), async (req, res, next) 
             staffType: staffType || '',
             roles: roles.length ? roles : ['FRONTLINE'],
             active: statusStr !== '禁用',
-            district: getDistrictFromBody(req, row)
+            district: userDistrict,
+            serviceDistricts: normalizeServiceDistricts(serviceDistricts, userDistrict)
           });
+          user.password = await hashPassword(DEFAULT_STAFF_PASSWORD);
+          user.passwordChanged = false;
 
           await user.save();
           logger.info(`新用户 ${name} 已创建`);

@@ -3,6 +3,7 @@ const Config = require('../models/config.model');
 const { createError } = require('../middleware/error-handler');
 const { requireRole } = require('../middleware/auth');
 const { logger } = require('../utils/logger');
+const { TIMEOUT_CONFIG_KEY, normalizeTimeoutConfig } = require('../utils/timeout-policy');
 
 const router = express.Router();
 const SENSITIVE_KEYS = new Set(['FASTGPT_API_KEY']);
@@ -94,7 +95,17 @@ router.get('/config/:key', async (req, res, next) => {
 router.put('/config/:key', requireRole('ADMIN'), async (req, res, next) => {
   try {
     const { key } = req.params;
-    const { value, label, description } = req.body;
+    let { value, label, description } = req.body;
+
+    if (key === TIMEOUT_CONFIG_KEY) {
+      const normalized = normalizeTimeoutConfig(value || {});
+      const requestedOverall = Number(value?.overallTimeoutDays);
+      const minOverall = Number(value?.designTimeoutDays) + Number(value?.constructionTimeoutDays);
+      if (Number.isFinite(requestedOverall) && Number.isFinite(minOverall) && requestedOverall < minOverall) {
+        throw createError(400, '总体超时天数须大于等于设计超时天数与施工超时天数之和');
+      }
+      value = normalized;
+    }
 
     const config = await Config.findOneAndUpdate(
       { key },

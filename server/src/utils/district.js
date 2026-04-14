@@ -34,10 +34,10 @@ function getDistrictFilter(req) {
  * @param {import('express').Request} req
  * @returns {string}
  */
-function getDistrictFromBody(req) {
+function getDistrictFromBody(req, source = req.body) {
   const roles = req.user?.roles || [];
-  if (roles.includes('ADMIN') && req.body.district) {
-    return req.body.district;
+  if (roles.includes('ADMIN') && source?.district) {
+    return source.district;
   }
   return req.user?.district || '射洪市';
 }

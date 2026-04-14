@@ -164,4 +164,4 @@ async function notifyGridManagers(demand) {
   }
 }
 
-module.exports = { runTimeoutCheck };
+module.exports = require('./auto-reminder.service');

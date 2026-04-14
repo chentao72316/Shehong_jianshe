@@ -78,6 +78,21 @@
   gap: 24rpx;
 }
 
+.page-footer {
+  margin-top: auto;
+  padding-top: 64rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.footer-text {
+  font-size: 22rpx;
+  color: #8C8C8C;
+  line-height: 1.4;
+}
+
 /* 输入框组 */
 .input-group {
   width: 100%;

@@ -11,6 +11,11 @@ const { getAssignmentIds, uniqueIds } = require('./demand-assignment');
 
 const CHAT_ID = process.env.FEISHU_CHAT_ID;
 
+function fmtMsDuration(ms) {
+  if (ms == null || isNaN(ms) || ms <= 0) return '不足1小时';
+  return fmtDuration(Math.max(1, Math.floor(ms / 60000)));
+}
+
 /**
  * 紧急度标签
  */
@@ -368,6 +373,63 @@ async function notifyOverallTimeout(demand) {
   }
 }
 
+async function notifyTimeoutEvent(demand, event) {
+  try {
+    const mentionIds = [];
+
+    if (event.type.startsWith('design')) {
+      mentionIds.push(...await getFeishuIds(getAssignmentIds(demand, 'assignedDesignUnit', 'assignedDesignUnits')));
+    } else if (event.type.startsWith('construction')) {
+      mentionIds.push(...await getFeishuIds([
+        ...getAssignmentIds(demand, 'assignedConstructionUnit', 'assignedConstructionUnits'),
+        ...getAssignmentIds(demand, 'assignedSupervisor', 'assignedSupervisors')
+      ]));
+    } else if (event.type.startsWith('crossAreaAudit')) {
+      mentionIds.push(...await getFeishuIds([demand.crossAreaReviewerId]));
+    } else if (event.type.startsWith('confirmation')) {
+      mentionIds.push(...await getAreaRoleFeishuIds(demand.acceptArea, demand.gridName, ['GRID_MANAGER', 'NETWORK_MANAGER']));
+    } else if (event.type.startsWith('overall')) {
+      mentionIds.push(...await getFeishuIds([
+        ...getAssignmentIds(demand, 'assignedDesignUnit', 'assignedDesignUnits'),
+        ...getAssignmentIds(demand, 'assignedConstructionUnit', 'assignedConstructionUnits'),
+        ...getAssignmentIds(demand, 'assignedSupervisor', 'assignedSupervisors'),
+        demand.crossAreaReviewerId
+      ]));
+      mentionIds.push(...await getAreaRoleFeishuIds(demand.acceptArea, demand.gridName, ['GRID_MANAGER', 'NETWORK_MANAGER']));
+    }
+
+    const titlePrefix = event.severity === 'warning' ? '⚠️' : '🚨';
+    const overMs = Math.max(0, event.elapsedMs - event.timeoutDays * 24 * 60 * 60 * 1000);
+    const actionText = event.severity === 'warning'
+      ? `已超过${event.stage}预警线 ${event.thresholdDays} 天，距超时上限约 ${fmtMsDuration(event.remainingMs)}`
+      : `已超过${event.stage}超时线 ${event.timeoutDays} 天，当前超时约 ${fmtMsDuration(overMs)}`;
+
+    const content = [
+      `工单编号：${demand.demandNo}`,
+      `受理区域：${demand.acceptArea}`,
+      `业务类型：${demand.businessType} · ${demand.type}`,
+      `当前状态：${demand.status}`,
+      ``,
+      `**超时详情**`,
+      `${event.stage}起算时间：${fmtDate(event.startTime)}`,
+      `已历时：${fmtMsDuration(event.elapsedMs)}`,
+      actionText,
+      ``,
+      event.severity === 'warning' ? '请相关责任人提前处理，避免进入超时。' : '请相关责任人尽快处理。'
+    ].join('\n');
+
+    await sendGroupMessage(
+      CHAT_ID,
+      `【${titlePrefix} ${event.label}】#${demand.demandNo}`,
+      content,
+      [...new Set(mentionIds)],
+      event.severity === 'warning' ? 'orange' : 'red'
+    );
+  } catch (err) {
+    logger.error('自动超时事件通知失败', { demandId: demand._id, eventType: event.type, error: err.message });
+  }
+}
+
 module.exports = {
   notifyNewDemand,
   notifyRejected,
@@ -376,5 +438,6 @@ module.exports = {
   notifyDemandCompleted,
   notifyDesignWarning,
   notifyConstructionUrgent,
+  notifyTimeoutEvent,
   notifyOverallTimeout
 };

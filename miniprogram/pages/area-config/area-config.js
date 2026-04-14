@@ -179,7 +179,8 @@ Page({
     const singlePick = type === 'networkManager';
     try {
       wx.showLoading({ title: '加载人员...' });
-      const res = await getStaffConfig({ role, pageSize: 200 });
+      const includeServiceDistrict = ['DESIGN', 'CONSTRUCTION', 'SUPERVISOR'].includes(role);
+      const res = await getStaffConfig({ role, pageSize: 200, includeServiceDistrict });
       wx.hideLoading();
       const candidates = (res.data.list || []).filter(u => u.active !== false);
 

@@ -9,7 +9,8 @@ const userSchema = new mongoose.Schema({
     type: String,
     enum: ['FRONTLINE', 'DISTRICT_MANAGER', 'DEPT_MANAGER', 'LEVEL4_MANAGER', 'DESIGN', 'CONSTRUCTION', 'SUPERVISOR', 'ADMIN', 'GRID_MANAGER', 'NETWORK_MANAGER']
   }],
-  district: { type: String, default: '射洪市' },  // 所属区县
+  district: { type: String, default: '射洪市' },  // 所属区县/账号归属
+  serviceDistricts: [{ type: String }], // 可服务区县，用于三方人员跨区候选人筛选
   area: { type: String },
   gridName: { type: String },
   wxAccount: { type: String },

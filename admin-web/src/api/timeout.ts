@@ -7,12 +7,22 @@ export async function getTimeoutList(params: {
   pageSize?: number
   area?: string
   district?: string
+  timeoutType?: string
 }): Promise<PaginatedResponse<Demand>> {
   const data = await request.get<PaginatedResponse<Demand>>('/timeout/list', { params })
   return data as unknown as PaginatedResponse<Demand>
 }
 
 // 发送催办提醒
-export async function sendRemind(demandId: string): Promise<void> {
-  await request.post('/timeout/remind', { demandId })
+export async function sendRemind(demandId: string, eventType?: string): Promise<void> {
+  await request.post('/timeout/remind', { demandId, eventType })
+}
+
+export async function setAutoReminderMute(data: {
+  demandId: string
+  eventType?: string
+  muted: boolean
+  reason?: string
+}): Promise<void> {
+  await request.post('/timeout/mute', data)
 }

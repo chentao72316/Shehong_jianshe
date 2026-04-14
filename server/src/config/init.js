@@ -1,13 +1,6 @@
 const Config = require('../models/config.model');
 const { logger } = require('../utils/logger');
-
-// 默认超时阈值配置
-const DEFAULT_TIMEOUT_CONFIG = {
-  designTimeoutDays: 2,
-  constructionTimeoutDays: 5,
-  designWarningDays: 1.5,
-  constructionWarningDays: 4
-};
+const { DEFAULT_TIMEOUT_CONFIG } = require('../utils/timeout-policy');
 
 // 初始化系统配置
 async function initSystemConfig() {
@@ -19,7 +12,7 @@ async function initSystemConfig() {
         key: 'TIMEOUT_CONFIG',
         value: DEFAULT_TIMEOUT_CONFIG,
         label: '超时阈值配置',
-        description: '设计超时天数（默认2天）、施工超时天数（默认5天）、预警天数（设计1.5天/施工4天）。修改后需重启服务生效。'
+        description: '设计、施工、跨区审核、开通确认、总体超时与预警天数配置。总体超时须不小于设计超时+施工超时。'
       });
       logger.info('系统配置初始化：TIMEOUT_CONFIG 已创建');
     } else {

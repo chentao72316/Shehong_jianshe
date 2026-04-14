@@ -4,6 +4,8 @@
       <el-button v-if="canManageAreaConfig" type="primary" @click="handleAdd">
         <el-icon><Plus /></el-icon>新增区域配置
       </el-button>
+      <el-button type="success" @click="handleExport">导出</el-button>
+      <el-button v-if="canManageAreaConfig" type="warning" @click="handleImport">导入</el-button>
       <span class="count-tip">共 {{ list.length }} 条区域配置</span>
     </el-card>
 
@@ -180,13 +182,44 @@
         <el-button v-if="canManageAreaConfig" type="primary" :loading="saving" @click="handleSave">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="importDialogVisible" title="导入区域配置" width="620px">
+      <div class="import-tips">
+        <p><strong>导入说明：</strong></p>
+        <ul>
+          <li>按“区县 + 受理区域”匹配：已存在则更新，不存在则新增。</li>
+          <li>不会删除导入表中没有出现的旧区域配置。</li>
+          <li>候选人建议填写“姓名(手机号)”；系统会优先按手机号匹配。</li>
+          <li>多个候选人用 / 分隔。</li>
+        </ul>
+      </div>
+      <el-upload
+        :auto-upload="false"
+        :limit="1"
+        accept=".csv"
+        :on-change="handleFileChange"
+        :file-list="fileList"
+      >
+        <el-button type="primary">选择 CSV 文件</el-button>
+        <template #tip>
+          <div class="el-upload__tip">请先下载导入模板，按模板字段维护后再导入</div>
+        </template>
+      </el-upload>
+      <div style="margin-top: 15px;">
+        <el-button type="success" @click="downloadTemplate">下载导入模板</el-button>
+      </div>
+      <template #footer>
+        <el-button @click="importDialogVisible = false">取消</el-button>
+        <el-button v-if="canManageAreaConfig" type="primary" :loading="importing" @click="handleImportConfirm">确定导入</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
-import { getAreaConfigList, saveAreaConfig, deleteAreaConfig, getStaffList, getStaffDistinct } from '@/api'
-import { ElMessage, ElMessageBox, type FormInstance, type FormRules } from 'element-plus'
+import { getAreaConfigList, saveAreaConfig, deleteAreaConfig, getStaffList, getStaffDistinct, exportAreaConfig, importAreaConfig } from '@/api'
+import { ElMessage, ElMessageBox, type FormInstance, type FormRules, type UploadFile } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
 import type { AreaConfig, StaffMember } from '@/types'
 import { useDistrictStore } from '@/stores/district'
@@ -198,9 +231,13 @@ const canManageAreaConfig = userStore.hasAnyRole(['ADMIN', 'DISTRICT_MANAGER'])
 
 const loading = ref(false)
 const saving = ref(false)
+const importing = ref(false)
 const dialogVisible = ref(false)
+const importDialogVisible = ref(false)
 const isEdit = ref(false)
 const formRef = ref<FormInstance>()
+const fileList = ref<UploadFile[]>([])
+const importData = ref<any[]>([])
 
 const list = ref<AreaConfig[]>([])
 
@@ -249,9 +286,9 @@ const loadList = async () => {
 const loadStaffOptions = async () => {
   const district = districtStore.apiDistrict ?? undefined
   const [d, c, s, n, distinct] = await Promise.all([
-    getStaffList({ role: 'DESIGN', pageSize: 200, district }),
-    getStaffList({ role: 'CONSTRUCTION', pageSize: 200, district }),
-    getStaffList({ role: 'SUPERVISOR', pageSize: 200, district }),
+    getStaffList({ role: 'DESIGN', pageSize: 200, district, includeServiceDistrict: true }),
+    getStaffList({ role: 'CONSTRUCTION', pageSize: 200, district, includeServiceDistrict: true }),
+    getStaffList({ role: 'SUPERVISOR', pageSize: 200, district, includeServiceDistrict: true }),
     getStaffList({ role: 'NETWORK_MANAGER', pageSize: 200, district }),
     getStaffDistinct({ district })
   ])
@@ -332,6 +369,125 @@ const handleDelete = async (row: AreaConfig) => {
   }
 }
 
+const handleExport = async () => {
+  try {
+    await exportAreaConfig({ district: districtStore.apiDistrict ?? undefined })
+    ElMessage.success('导出成功')
+  } catch (e) {
+    console.error(e)
+    ElMessage.error('导出失败')
+  }
+}
+
+const handleImport = () => {
+  importData.value = []
+  fileList.value = []
+  importDialogVisible.value = true
+}
+
+const handleFileChange = (file: UploadFile) => {
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const buffer = e.target?.result as ArrayBuffer
+      let content = new TextDecoder('utf-8').decode(buffer)
+      let lines = content.split('\n').filter(line => line.trim())
+      const firstLine = lines[0] || ''
+      const hasUTF8Header = firstLine.includes('区县') && firstLine.includes('受理区域')
+
+      if (!hasUTF8Header && lines.length > 0) {
+        content = new TextDecoder('gbk').decode(buffer)
+        lines = content.split('\n').filter(line => line.trim())
+      }
+
+      if (lines.length < 2) {
+        ElMessage.error('CSV 文件内容为空或格式错误')
+        return
+      }
+
+      const headers = parseCSVLine(lines[0])
+      const data: any[] = []
+      for (let i = 1; i < lines.length; i++) {
+        const values = parseCSVLine(lines[i])
+        if (values.length === headers.length) {
+          const row: any = {}
+          headers.forEach((header, index) => {
+            row[header] = values[index]
+          })
+          data.push(row)
+        }
+      }
+
+      importData.value = data
+      ElMessage.success(`已解析 ${data.length} 条数据`)
+    } catch (e) {
+      ElMessage.error('解析 CSV 文件失败')
+      console.error(e)
+    }
+  }
+  reader.readAsArrayBuffer(file.raw as any)
+}
+
+const parseCSVLine = (line: string): string[] => {
+  const result: string[] = []
+  let current = ''
+  let inQuotes = false
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i]
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"'
+        i++
+      } else {
+        inQuotes = !inQuotes
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim())
+      current = ''
+    } else {
+      current += char
+    }
+  }
+  result.push(current.trim())
+  return result
+}
+
+const handleImportConfirm = async () => {
+  if (importData.value.length === 0) {
+    ElMessage.warning('请先选择 CSV 文件')
+    return
+  }
+
+  importing.value = true
+  try {
+    const result = await importAreaConfig(importData.value)
+    ElMessage.success(result.message)
+    if (result.details.errors.length > 0) console.error('区域配置导入错误:', result.details.errors)
+    importDialogVisible.value = false
+    loadList()
+  } catch (e) {
+    console.error(e)
+  } finally {
+    importing.value = false
+  }
+}
+
+const downloadTemplate = () => {
+  const template = `区县,受理区域,网络支撑中心,设计候选人,施工候选人,监理候选人,确认经理,状态
+射洪市,太和东服务中心,城区网络支撑中心,张三(13800138000)/李四(13800138001),王五(13800138002),赵六(13800138003),钱七(13800138004),启用`
+
+  const blob = new Blob(['\ufeff' + template], { type: 'text/csv;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `区域配置导入模板_${new Date().toISOString().slice(0, 10).replace(/-/g, '')}.csv`
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  URL.revokeObjectURL(url)
+}
+
 onMounted(() => {
   loadList()
   loadStaffOptions()
@@ -365,6 +521,23 @@ watch(() => districtStore.apiDistrict, () => {
 .text-placeholder {
   color: #c0c4cc;
   font-size: 13px;
+}
+
+.import-tips {
+  background: #f5f7fa;
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.import-tips ul {
+  margin: 5px 0 5px 20px;
+  padding-left: 0;
+}
+
+.import-tips li {
+  margin: 3px 0;
 }
 
 :deep(.el-table) { font-size: 15px; }

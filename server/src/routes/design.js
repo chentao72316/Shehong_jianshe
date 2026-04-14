@@ -46,6 +46,7 @@ router.post('/design/submit', requireRole('DESIGN'), async (req, res, next) => {
 
     if (hasResource) {
       demand.status = '待确认';
+      demand.confirmPendingTime = now;
       // 查询该区域的网络支撑经理姓名，写入日志便于追踪
       const areaCfg = await AreaConfig.findOne({ acceptArea: demand.acceptArea, district: demand.district })
         .populate('networkManagerId', 'name').lean();

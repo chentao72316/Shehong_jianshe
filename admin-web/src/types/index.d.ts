@@ -9,6 +9,7 @@ export interface UserInfo {
   role?: Role
   roles: Role[]
   district?: string
+  serviceDistricts?: string[]
   area: string
   gridName: string
   feishuId?: string
@@ -124,7 +125,9 @@ export interface DemandLog {
 // 超时需求
 export interface TimeoutDemand extends Demand {
   timeoutDays: number
-  timeoutType: '设计超时' | '施工超时' | '整体超时'
+  timeoutType: '设计超时' | '施工超时' | '跨区审核超时' | '开通确认超时' | '总体超时'
+  timeoutEventType?: string
+  muted?: boolean
 }
 
 // 人员配置
@@ -134,6 +137,7 @@ export interface StaffMember {
   phone: string
   roles: Role[]
   district?: string
+  serviceDistricts?: string[]
   area: string
   gridName: string
   feishuId?: string

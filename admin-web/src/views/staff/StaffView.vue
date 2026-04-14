@@ -35,6 +35,12 @@
         <el-table-column prop="phone" label="手机号" width="150" />
         <el-table-column prop="wxAccount" label="微信号" width="150" />
         <el-table-column prop="feishuId" label="飞书账号" width="150" />
+        <el-table-column prop="district" label="区县" width="100" />
+        <el-table-column label="可服务区县" width="180">
+          <template #default="{ row }">
+            {{ formatServiceDistricts(row) || '-' }}
+          </template>
+        </el-table-column>
         <el-table-column prop="roles" label="角色" min-width="200">
           <template #default="{ row }">
             <el-tag v-for="role in row.roles" :key="role" size="small" type="info" style="margin-right: 4px;">
@@ -127,7 +133,22 @@
           <el-col :span="12">
             <el-form-item label="区县">
               <el-select v-model="form.district" :disabled="!userStore.isAdmin()" style="width: 100%">
-                <el-option v-for="d in ['射洪市', '蓬溪县', '大英县', '船山区', '安居区']" :key="d" :label="d" :value="d" />
+                <el-option v-for="d in DISTRICTS" :key="d" :label="d" :value="d" />
+              </el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="可服务区县">
+              <el-select
+                v-model="form.serviceDistricts"
+                multiple
+                collapse-tags
+                collapse-tags-tooltip
+                :disabled="!userStore.isAdmin()"
+                placeholder="请选择可服务区县"
+                style="width: 100%"
+              >
+                <el-option v-for="d in DISTRICTS" :key="d" :label="d" :value="d" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -248,6 +269,7 @@
         </ul>
         <p style="margin-top: 10px;"><strong>支持角色：</strong>一线人员、区县管理员、部门经理、四级经理、网格经理、网络支撑经理、设计、施工、监理、管理员</p>
         <p style="margin-top: 5px;"><strong>人员属性：</strong>自有、三方</p>
+        <p style="margin-top: 5px;"><strong>可服务区县：</strong>用于设计/施工/监理跨区候选人筛选，多个区县用 / 分隔</p>
       </div>
       <el-upload
         class="upload-demo"
@@ -285,6 +307,7 @@ const districtStore = useDistrictStore()
 const userStore = useUserStore()
 const canManageStaff = userStore.hasAnyRole(['ADMIN', 'DISTRICT_MANAGER'])
 const canImportStaff = userStore.isAdmin()
+const DISTRICTS = ['射洪市', '蓬溪县', '大英县', '船山区', '安居区']
 
 const loading = ref(false)
 const saving = ref(false)
@@ -345,6 +368,7 @@ const form = reactive({
   phone: '',
   roles: [] as string[],
   district: '射洪市',
+  serviceDistricts: ['射洪市'] as string[],
   area: '',
   gridName: '',
   feishuId: '',
@@ -387,6 +411,11 @@ const getStaffTypeName = (staffType?: string) => {
   return map[staffType] || staffType
 }
 
+const formatServiceDistricts = (row: StaffMember) => {
+  const districts = row.serviceDistricts?.length ? row.serviceDistricts : (row.district ? [row.district] : [])
+  return districts.join('/')
+}
+
 const loadStaff = async () => {
   loading.value = true
   try {
@@ -412,6 +441,7 @@ const resetForm = () => {
   form.phone = ''
   form.roles = []
   form.district = districtStore.apiDistrict || '射洪市'
+  form.serviceDistricts = [form.district]
   form.area = ''
   form.gridName = ''
   form.feishuId = ''
@@ -433,6 +463,7 @@ const handleEdit = (row: StaffMember) => {
   form.phone = row.phone
   form.roles = [...row.roles]
   form.district = row.district || '射洪市'
+  form.serviceDistricts = row.serviceDistricts?.length ? [...row.serviceDistricts] : [form.district]
   form.area = row.area || ''
   form.gridName = row.gridName || ''
   form.feishuId = row.feishuId || ''
@@ -449,6 +480,9 @@ const handleSave = async () => {
 
     saving.value = true
     try {
+      if (!form.serviceDistricts.includes(form.district)) {
+        form.serviceDistricts = [form.district, ...form.serviceDistricts]
+      }
       await saveStaff(form as any)
       ElMessage.success('保存成功')
       dialogVisible.value = false
@@ -645,11 +679,11 @@ const loadDistinctOptions = async () => {
 }
 
 const downloadTemplate = () => {
-  const template = `姓名,手机号,微信号,飞书账号,单位,部门/网格,工号,人员属性,角色,状态
-张三,13800138000,wx123456,fs123456,射洪,太和东服务中心,EMP001,自有,一线人员,启用
-李四,13800138001,wx234567,fs234567,射洪,太和西服务中心,EMP002,三方,施工,启用
-王五,13800138002,wx345678,fs345678,船山,城区网络支撑中心,EMP003,自有,网格经理,启用
-赵六,13800138003,wx456789,fs456789,蓬溪,金华网格,EMP004,自有,区县管理员,启用`
+  const template = `姓名,手机号,微信号,飞书账号,区县,可服务区县,单位,部门/网格,工号,人员属性,角色,状态
+张三,13800138000,wx123456,fs123456,射洪市,射洪市,射洪,太和东服务中心,EMP001,自有,一线人员,启用
+李四,13800138001,wx234567,fs234567,射洪市,射洪市/船山区,射洪,太和西服务中心,EMP002,三方,施工,启用
+王五,13800138002,wx345678,fs345678,船山区,船山区,船山,城区网络支撑中心,EMP003,自有,网格经理,启用
+赵六,13800138003,wx456789,fs456789,蓬溪县,蓬溪县,蓬溪,金华网格,EMP004,自有,区县管理员,启用`
 
   const blob = new Blob(['\ufeff' + template], { type: 'text/csv;charset=utf-8' })
   const url = URL.createObjectURL(blob)
@@ -672,6 +706,12 @@ watch(() => districtStore.apiDistrict, () => {
   currentPage.value = 1
   loadStaff()
   loadDistinctOptions()
+})
+
+watch(() => form.district, (district) => {
+  if (district && !form.serviceDistricts.includes(district)) {
+    form.serviceDistricts = [district, ...form.serviceDistricts]
+  }
 })
 </script>
 

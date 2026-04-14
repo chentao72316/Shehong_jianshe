@@ -15,6 +15,7 @@ export async function getStaffList(params: {
   role?: string
   keyword?: string
   district?: string
+  includeServiceDistrict?: boolean | string
 }): Promise<PaginatedResponse<StaffMember>> {
   const data = await request.get<PaginatedResponse<StaffMember>>('/admin/staff', { params })
   return data as unknown as PaginatedResponse<StaffMember>

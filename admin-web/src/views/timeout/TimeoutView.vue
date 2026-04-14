@@ -10,8 +10,7 @@
         </el-col>
         <el-col :span="5">
           <el-select v-model="searchTimeoutType" placeholder="超时类型" clearable @change="handleSearch">
-            <el-option label="设计超时" value="设计中" />
-            <el-option label="施工超时" value="施工中" />
+            <el-option v-for="item in timeoutTypeOptions" :key="item.value" :label="item.label" :value="item.value" />
           </el-select>
         </el-col>
         <el-col :span="4">
@@ -34,9 +33,9 @@
             <el-tag :type="getUrgencyType(row.urgency)" size="small">{{ row.urgency }}</el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="超时类型" width="100">
+        <el-table-column label="超时类型" width="125">
           <template #default="{ row }">
-            <el-tag type="danger" size="small">{{ row.timeoutType || (row.status === '设计中' ? '设计超时' : '施工超时') }}</el-tag>
+            <el-tag :type="row.muted ? 'info' : 'danger'" size="small">{{ row.timeoutType }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="超时天数" width="100">
@@ -47,13 +46,15 @@
         <el-table-column prop="demandPersonName" label="申请人" width="80" />
         <el-table-column label="责任单位" min-width="120" show-overflow-tooltip>
           <template #default="{ row }">
-            <span v-if="row.status === '设计中'">{{ getUnitName(row.assignedDesignUnit) }}</span>
-            <span v-else>{{ getUnitName(row.assignedConstructionUnit) }}</span>
+            <span>{{ getResponsibleUnit(row) }}</span>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="250" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="handleRemind(row)">催办</el-button>
+            <el-button :type="row.muted ? 'success' : 'info'" link size="small" @click="handleToggleMute(row)">
+              {{ row.muted ? '恢复督办' : '停止督办' }}
+            </el-button>
             <el-button type="warning" link size="small" @click="handleRemark(row)">备注</el-button>
             <el-button type="danger" link size="small" @click="handleForce(row)">强制状态</el-button>
           </template>
@@ -118,7 +119,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
-import { getTimeoutList, sendRemind } from '@/api/timeout'
+import { getTimeoutList, sendRemind, setAutoReminderMute } from '@/api/timeout'
 import { addRemark, forceStatus } from '@/api/intervene'
 import { getAreaConfigList } from '@/api/area-config'
 import { ElMessage, ElMessageBox } from 'element-plus'
@@ -129,7 +130,10 @@ const districtStore = useDistrictStore()
 
 interface TimeoutDemandItem extends Demand {
   timeoutDays: number
+  timeoutHours?: number
   timeoutType: string
+  timeoutEventType: string
+  muted?: boolean
 }
 
 const loading = ref(false)
@@ -146,6 +150,13 @@ const searchTimeoutType = ref('')
 const timeoutList = ref<TimeoutDemandItem[]>([])
 const currentDemand = ref<TimeoutDemandItem | null>(null)
 const areaOptions = ref<string[]>([])
+const timeoutTypeOptions = [
+  { label: '设计超时', value: 'designTimeout' },
+  { label: '施工超时', value: 'constructionTimeout' },
+  { label: '跨区审核超时', value: 'crossAreaAuditTimeout' },
+  { label: '开通确认超时', value: 'confirmationTimeout' },
+  { label: '总体超时', value: 'overallTimeout' }
+]
 
 const remarkForm = reactive({ remark: '' })
 const forceForm = reactive({ status: '' })
@@ -160,6 +171,20 @@ const getUnitName = (unit: any) => {
   if (!unit) return '-'
   if (typeof unit === 'object') return unit.name || '-'
   return unit
+}
+
+const getResponsibleUnit = (row: TimeoutDemandItem) => {
+  if (row.timeoutEventType === 'designTimeout') return getUnitName(row.assignedDesignUnit)
+  if (row.timeoutEventType === 'constructionTimeout') return getUnitName(row.assignedConstructionUnit)
+  if (row.timeoutEventType === 'crossAreaAuditTimeout') return getUnitName(row.crossAreaReviewerId)
+  if (row.timeoutEventType === 'confirmationTimeout') return '网络支撑经理'
+  if (row.timeoutEventType === 'overallTimeout') {
+    if (row.status === '设计中') return getUnitName(row.assignedDesignUnit)
+    if (row.status === '施工中') return getUnitName(row.assignedConstructionUnit)
+    if (row.status === '待审核') return getUnitName(row.crossAreaReviewerId)
+    if (row.status === '待确认') return '网络支撑经理'
+  }
+  return '-'
 }
 
 const handleSearch = () => {
@@ -181,13 +206,9 @@ const loadTimeout = async () => {
     }
     if (searchArea.value) params.area = searchArea.value
     if (districtStore.apiDistrict) params.district = districtStore.apiDistrict
-    // 超时类型过滤通过area-based查询实现，此处前端二次过滤
+    if (searchTimeoutType.value) params.timeoutType = searchTimeoutType.value
     const data = await getTimeoutList(params)
-    let list = data.list as TimeoutDemandItem[]
-    if (searchTimeoutType.value) {
-      list = list.filter(d => d.status === searchTimeoutType.value)
-    }
-    timeoutList.value = list
+    timeoutList.value = data.list as TimeoutDemandItem[]
     total.value = data.total
   } catch (error) {
     console.error(error)
@@ -214,8 +235,28 @@ const handleRemind = async (row: TimeoutDemandItem) => {
       `确定向【${row.demandNo}】（${row.timeoutType}，已超 ${row.timeoutDays} 天）的责任单位发送催办？`,
       '催办确认'
     )
-    await sendRemind(row.id)
+    await sendRemind(row.id, row.timeoutEventType)
     ElMessage.success('催办提醒已发送')
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error(error)
+    }
+  }
+}
+
+const handleToggleMute = async (row: TimeoutDemandItem) => {
+  try {
+    const muted = !row.muted
+    await ElMessageBox.confirm(
+      muted
+        ? `确定停止【${row.demandNo}】的「${row.timeoutType}」系统自动督办消息吗？人工催办仍可立即发送。`
+        : `确定恢复【${row.demandNo}】的「${row.timeoutType}」系统自动督办消息吗？`,
+      muted ? '停止自动督办' : '恢复自动督办',
+      { type: muted ? 'warning' : 'info' }
+    )
+    await setAutoReminderMute({ demandId: row.id, eventType: row.timeoutEventType, muted })
+    ElMessage.success(muted ? '已停止该类型自动督办' : '已恢复该类型自动督办')
+    loadTimeout()
   } catch (error) {
     if (error !== 'cancel') {
       console.error(error)

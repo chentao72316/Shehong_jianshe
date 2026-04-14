@@ -57,6 +57,7 @@ const demandSchema = new mongoose.Schema({
   // 网格经理确认信息
   confirmBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },  // 确认人
   confirmTime: { type: Date },                                        // 确认时间
+  confirmPendingTime: { type: Date },                                 // 进入待确认状态时间
   confirmRejectReason: { type: String },                              // 确认驳回原因
   // 驳回信息
   rejectType: { type: String, enum: ['有资源', '其他'], default: null },  // 驳回类型
@@ -92,7 +93,13 @@ const demandSchema = new mongoose.Schema({
   }],
   // 超时通知去重：记录最近一次超时通知时间，防止每次检查都重复发送
   lastDesignTimeoutNotifyAt: { type: Date },
-  lastConstructionTimeoutNotifyAt: { type: Date }
+  lastConstructionTimeoutNotifyAt: { type: Date },
+  autoReminderState: { type: mongoose.Schema.Types.Mixed, default: {} },
+  autoReminderMutedTypes: [{ type: String }],
+  autoReminderMutedAll: { type: Boolean, default: false },
+  autoReminderMutedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  autoReminderMutedAt: { type: Date },
+  autoReminderMuteReason: { type: String, default: '' }
 }, {
   timestamps: true
 });

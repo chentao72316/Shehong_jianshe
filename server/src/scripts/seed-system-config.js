@@ -9,6 +9,7 @@
 require('dotenv').config();
 const mongoose = require('mongoose');
 const Config = require('../models/config.model');
+const { DEFAULT_TIMEOUT_CONFIG } = require('../utils/timeout-policy');
 
 const forceUpdate = process.argv.includes('--force');
 
@@ -16,13 +17,8 @@ const CONFIGS = [
   {
     key: 'TIMEOUT_CONFIG',
     label: '超时阈值配置',
-    description: '设计超时天数（默认2天）、施工超时天数（默认5天）、预警天数（设计1.5天/施工4天）。修改后需重启服务生效。',
-    value: {
-      designTimeoutDays: 2,
-      constructionTimeoutDays: 5,
-      designWarningDays: 1.5,
-      constructionWarningDays: 4
-    }
+    description: '设计、施工、跨区审核、开通确认、总体超时与预警天数配置。总体超时须不小于设计超时+施工超时。',
+    value: DEFAULT_TIMEOUT_CONFIG
   }
 ];
 
