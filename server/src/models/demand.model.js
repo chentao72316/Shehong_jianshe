@@ -99,9 +99,41 @@ const demandSchema = new mongoose.Schema({
   autoReminderMutedAll: { type: Boolean, default: false },
   autoReminderMutedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
   autoReminderMutedAt: { type: Date },
-  autoReminderMuteReason: { type: String, default: '' }
+  autoReminderMuteReason: { type: String, default: '' },
+  // 软删除审计
+  isDeleted: { type: Boolean, default: false },
+  deletedAt: { type: Date },
+  deletedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  deletedByName: { type: String },
+  deleteReason: { type: String, default: '' }
 }, {
   timestamps: true
+});
+
+function notDeletedFilter() {
+  return { isDeleted: { $ne: true } };
+}
+
+function shouldIncludeDeleted(query) {
+  return Boolean(query?.getOptions?.().includeDeleted);
+}
+
+demandSchema.pre(/^find/, function excludeDeleted(next) {
+  if (!shouldIncludeDeleted(this)) this.where(notDeletedFilter());
+  next();
+});
+
+demandSchema.pre('countDocuments', function excludeDeletedCount(next) {
+  if (!shouldIncludeDeleted(this)) this.where(notDeletedFilter());
+  next();
+});
+
+demandSchema.pre('aggregate', function excludeDeletedAggregate(next) {
+  const options = this.options || {};
+  if (!options.includeDeleted) {
+    this.pipeline().unshift({ $match: notDeletedFilter() });
+  }
+  next();
 });
 
 // 复合索引，支持常见查询
@@ -114,5 +146,6 @@ demandSchema.index({ assignedDesignUnits: 1, status: 1 });
 demandSchema.index({ assignedConstructionUnits: 1, status: 1 });
 demandSchema.index({ assignedSupervisors: 1, status: 1 });
 demandSchema.index({ createdBy: 1, createdAt: -1 });
+demandSchema.index({ isDeleted: 1, deletedAt: -1 });
 
 module.exports = mongoose.model('Demand', demandSchema);

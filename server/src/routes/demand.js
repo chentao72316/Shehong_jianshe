@@ -623,10 +623,43 @@ router.get('/demand/detail', async (req, res, next) => {
  */
 router.delete('/demand/:id', requireRole('ADMIN'), async (req, res, next) => {
   try {
-    const demand = await Demand.findByIdAndDelete(req.params.id);
+    const demand = await Demand.findById(req.params.id).setOptions({ includeDeleted: true });
     if (!demand) throw createError(404, '工单不存在');
-    logger.info('管理员删除工单', { demandId: req.params.id, demandNo: demand.demandNo, operator: req.user._id });
+
+    if (demand.isDeleted) {
+      return res.json({ code: 0, data: { id: demand._id, deleted: true } });
+    }
+
+    const now = new Date();
+    const reason = String(req.body?.reason || '').trim();
+    demand.isDeleted = true;
+    demand.deletedAt = now;
+    demand.deletedBy = req.user._id;
+    demand.deletedByName = req.user.name;
+    demand.deleteReason = reason;
+    demand.autoReminderMutedAll = true;
+    demand.autoReminderMutedBy = req.user._id;
+    demand.autoReminderMutedAt = now;
+    demand.autoReminderMuteReason = reason || '工单已删除';
+    demand.logs.push({
+      content: `管理员删除工单${reason ? `，原因：${reason}` : ''}`,
+      operatorId: req.user._id,
+      operatorName: req.user.name
+    });
+    await demand.save();
+
+    logger.info('管理员软删除工单', { demandId: req.params.id, demandNo: demand.demandNo, operator: req.user._id });
     res.json({ code: 0, data: {} });
+
+    const { syncDemandWithPopulate } = require('../utils/feishu-bitable');
+    syncDemandWithPopulate(demand).catch(() => {});
+    broadcastDemandUpdate(String(demand._id), {
+      type: 'delete',
+      demandId: String(demand._id),
+      demandNo: demand.demandNo,
+      isDeleted: true,
+      deletedAt: now
+    });
   } catch (err) {
     next(err);
   }

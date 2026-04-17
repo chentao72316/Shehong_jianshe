@@ -71,6 +71,10 @@ const FEISHU_FIELD_TYPE_HINTS = {
   '自动督办停止原因': '多行文本',
   '自动督办停止时间': '日期时间',
   '自动督办停止人': '单行文本',
+  '删除状态': '单选',
+  '删除时间': '日期时间',
+  '删除人': '单行文本',
+  '删除原因': '多行文本',
   '操作日志': '多行文本',
   '预约客户数': '数字',
   'DP箱数量': '数字',
@@ -89,7 +93,8 @@ const FEISHU_FIELD_OPTION_HINTS = {
   '资产状态': ['已生效', '待生效', '未生效'],
   '开通方式': ['已有资源开通', '施工建设开通', '-'],
   '驳回类型': ['有资源', '其他'],
-  '最终状态': ['已开通', '已驳回']
+  '最终状态': ['已开通', '已驳回'],
+  '删除状态': ['正常', '已删除']
 };
 
 // 涓婁紶鐩綍锛歴erver/uploads锛堢浉瀵逛簬 server/src/utils锛屽線涓婁袱绾э級
@@ -335,6 +340,10 @@ async function buildFields(demand, appToken) {
     '自动督办停止原因': demand.autoReminderMuteReason || '-',
     '自动督办停止时间': toFeishuTimestamp(demand.autoReminderMutedAt),
     '自动督办停止人': typeof demand.autoReminderMutedBy === 'object' ? (demand.autoReminderMutedBy?.name || '-') : '-',
+    '删除状态': demand.isDeleted ? '已删除' : '正常',
+    '删除时间': toFeishuTimestamp(demand.deletedAt),
+    '删除人': typeof demand.deletedBy === 'object' ? (demand.deletedBy?.name || '-') : (demand.deletedByName || '-'),
+    '删除原因': demand.deleteReason || '-',
     '操作日志': logsText || '-'
   };
 
@@ -351,6 +360,7 @@ async function buildFields(demand, appToken) {
   if (fields['驳回时间'] == null) delete fields['驳回时间'];
   if (fields['完成时间'] == null) delete fields['完成时间'];
   if (fields['自动督办停止时间'] == null) delete fields['自动督办停止时间'];
+  if (fields['删除时间'] == null) delete fields['删除时间'];
   if (demand.constructionLat == null) delete fields['完工纬度'];
   if (demand.constructionLng == null) delete fields['完工经度'];
   if (!demand.rejectType) delete fields['驳回类型'];
@@ -452,6 +462,7 @@ const POPULATE_FIELDS = [
   { path: 'assignedSupervisor',       select: 'name' },
   { path: 'confirmBy',                select: 'name' },
   { path: 'autoReminderMutedBy',      select: 'name' },
+  { path: 'deletedBy',                select: 'name' },
   { path: 'rejectedBy',               select: 'name' },
   { path: 'crossAreaReviewerId',      select: 'name' }
 ];

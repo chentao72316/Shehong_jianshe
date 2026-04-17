@@ -492,7 +492,14 @@ router.post('/dev/run-scenario', async (req, res, next) => {
   // 清理本次产生的测试工单
   if (demandId) {
     try {
-      await Demand.findByIdAndDelete(demandId);
+      await Demand.findByIdAndUpdate(demandId, {
+        $set: {
+          isDeleted: true,
+          deletedAt: new Date(),
+          deletedByName: 'DEV_TEST',
+          deleteReason: '测试场景自动清理'
+        }
+      });
     } catch {
       // 清理失败不影响结果
     }
