@@ -17,18 +17,36 @@
       </view>
       <view class="timeout-info-row mt-16">
         <text class="text-secondary">{{item.type}}</text>
+        <text class="timeout-type {{item.timeoutEventType === 'overallTimeout' ? 'overall' : ''}}">{{item.timeoutType || '超时'}}</text>
+        <text class="mute-tag {{item.muted ? 'muted' : ''}}">{{item.muteLabel}}</text>
         <text class="text-hint location-text" wx:if="{{item.location}}">{{item.location}}</text>
+      </view>
+      <view class="timeout-info-row mt-16" wx:if="{{item.timeoutStartAt}}">
+        <text class="text-hint">计时起点：{{item.timeoutStartAt}}</text>
       </view>
       <view class="timeout-footer mt-16">
         <text class="text-danger timeout-days">已超时 {{item.timeoutDays}} 天</text>
-        <button
-          class="remind-btn"
-          size="mini"
-          data-id="{{item.id}}"
-          catchtap="onSendRemind"
-        >
-          飞书提醒
-        </button>
+        <view class="timeout-actions">
+          <button
+            class="mute-btn {{item.muted ? 'restore' : ''}}"
+            size="mini"
+            data-id="{{item.id}}"
+            data-event-type="{{item.timeoutEventType}}"
+            data-muted="{{item.muted}}"
+            catchtap="onToggleMute"
+          >
+            {{item.muteButtonText}}
+          </button>
+          <button
+            class="remind-btn"
+            size="mini"
+            data-id="{{item.id}}"
+            data-event-type="{{item.timeoutEventType}}"
+            catchtap="onSendRemind"
+          >
+            飞书提醒
+          </button>
+        </view>
       </view>
     </view>
   </view>

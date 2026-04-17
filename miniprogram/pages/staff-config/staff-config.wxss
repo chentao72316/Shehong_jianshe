@@ -10,6 +10,8 @@
 
 .staff-role { font-size: 24rpx; }
 
+.staff-service { font-size: 22rpx; line-height: 1.4; max-width: 420rpx; }
+
 .staff-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6rpx; }
 
 .staff-phone { font-size: 24rpx; }
@@ -31,6 +33,8 @@
 .form-label { display: block; font-size: 26rpx; color: #595959; margin-bottom: 8rpx; }
 
 .form-input { width: 100%; height: 72rpx; border: 1rpx solid #E8E8E8; border-radius: 8rpx; padding: 0 16rpx; font-size: 28rpx; box-sizing: border-box; }
+
+.form-tip { display: block; margin-top: 8rpx; font-size: 22rpx; color: #8C8C8C; line-height: 1.5; }
 
 .picker-value { height: 72rpx; border: 1rpx solid #E8E8E8; border-radius: 8rpx; padding: 0 16rpx; font-size: 28rpx; display: flex; align-items: center; }
 
@@ -99,3 +103,7 @@
 .manual-input-row { display: flex; gap: 16rpx; align-items: center; margin-top: 16rpx; }
 .manual-input { flex: 1; }
 .manual-confirm-btn { flex-shrink: 0; font-size: 28rpx; padding: 0 24rpx; height: 72rpx; line-height: 72rpx; }
+
+.district-checks { display: flex; flex-wrap: wrap; gap: 12rpx; }
+
+.district-check { display: flex; align-items: center; gap: 6rpx; min-width: 180rpx; font-size: 26rpx; color: #262626; }

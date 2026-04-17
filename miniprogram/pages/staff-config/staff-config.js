@@ -2,6 +2,21 @@ const { getStaffConfig, updateStaff, reassign, getDemandDetail, getStaffDistinct
 const { ROLES } = require('../../utils/constants');
 
 const PAGE_SIZE = 15;
+const DISTRICT_OPTIONS = ['射洪市', '蓬溪县', '大英县', '船山区', '安居区'];
+
+function normalizeServiceDistricts(serviceDistricts, district) {
+  const list = Array.isArray(serviceDistricts) ? serviceDistricts : [];
+  const normalized = [...new Set(list.filter(item => DISTRICT_OPTIONS.includes(item)))];
+  if (district && DISTRICT_OPTIONS.includes(district) && !normalized.includes(district)) {
+    normalized.unshift(district);
+  }
+  return normalized;
+}
+
+function buildDistrictCheckOptions(serviceDistricts) {
+  const selected = new Set(serviceDistricts || []);
+  return DISTRICT_OPTIONS.map(name => ({ name, checked: selected.has(name) }));
+}
 
 Page({
   data: {
@@ -16,6 +31,8 @@ Page({
     showEditModal: false,
     editingStaff: null,
     roleOptions: Object.entries(ROLES).map(([key, label]) => ({ key, label })),
+    districtOptions: DISTRICT_OPTIONS,
+    districtCheckOptions: buildDistrictCheckOptions([]),
     // 单位/网格下拉选项
     areaOptions: [],
     gridNameOptions: [],
@@ -62,7 +79,9 @@ Page({
       const res = await getStaffConfig({ page: this.data.page, pageSize: PAGE_SIZE });
       let staffList = (res.data.list || []).map(staff => ({
         ...staff,
-        roleLabel: (staff.roles || []).map(r => ROLES[r]).filter(Boolean).join('/')
+        serviceDistricts: normalizeServiceDistricts(staff.serviceDistricts, staff.district),
+        roleLabel: (staff.roles || []).map(r => ROLES[r]).filter(Boolean).join('/'),
+        serviceDistrictsText: normalizeServiceDistricts(staff.serviceDistricts, staff.district).join('、')
       }));
 
       // 指派模式：只显示设计单位
@@ -128,9 +147,15 @@ Page({
 
   onEditStaff(e) {
     const { index } = e.currentTarget.dataset;
+    const staff = this.data.staffList[index];
     this.setData({
       showEditModal: true,
-      editingStaff: { ...this.data.staffList[index], index }
+      editingStaff: {
+        ...staff,
+        index,
+        serviceDistricts: normalizeServiceDistricts(staff.serviceDistricts, staff.district)
+      },
+      districtCheckOptions: buildDistrictCheckOptions(normalizeServiceDistricts(staff.serviceDistricts, staff.district))
     });
   },
 
@@ -144,6 +169,14 @@ Page({
     this.setData({ 'editingStaff.roles': [key], 'editingStaff.roleLabel': label });
   },
 
+  onServiceDistrictChange(e) {
+    const values = normalizeServiceDistricts(e.detail.value, this.data.editingStaff.district);
+    this.setData({
+      'editingStaff.serviceDistricts': values,
+      districtCheckOptions: buildDistrictCheckOptions(values)
+    });
+  },
+
   async onSaveStaff() {
     const staff = this.data.editingStaff;
     if (!staff.name || !staff.phone) {
@@ -151,7 +184,11 @@ Page({
       return;
     }
     try {
-      await updateStaff({ ...staff, userId: staff.id });
+      await updateStaff({
+        ...staff,
+        userId: staff.id,
+        serviceDistricts: normalizeServiceDistricts(staff.serviceDistricts, staff.district)
+      });
       this.setData({ showEditModal: false, editingStaff: null });
       this.loadStaff();
     } catch {}

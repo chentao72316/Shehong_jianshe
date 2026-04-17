@@ -89,10 +89,9 @@ async function start() {
     const { seedRoleConfig } = require('./config/seed-role-config');
     await seedRoleConfig();
 
-    // 启动超时检查定时任务（启动时立即执行，之后每小时一次）
-    const { runTimeoutCheck } = require('./services/auto-reminder.service');
-    runTimeoutCheck(); // 启动时立即执行一次
-    setInterval(runTimeoutCheck, 60 * 60 * 1000);
+    // 启动超时检查调度器：按北京时间固定批次发送，检查间隔由 AUTO_REMINDER_CONFIG 控制
+    const { startAutoReminderScheduler } = require('./services/auto-reminder.service');
+    startAutoReminderScheduler();
 
     // 创建HTTP服务器并初始化WebSocket
     const server = http.createServer(app);

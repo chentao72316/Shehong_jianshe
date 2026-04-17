@@ -24,6 +24,7 @@
         <view class="staff-info">
           <text class="staff-name">{{item.name}}</text>
           <text class="staff-role text-secondary">{{item.roleLabel}}</text>
+          <text class="staff-service text-hint" wx:if="{{item.serviceDistrictsText}}">可服务区县：{{item.serviceDistrictsText}}</text>
         </view>
         <view class="staff-right">
           <text class="staff-phone text-hint">{{item.phone}}</text>
@@ -81,6 +82,16 @@
         <picker range="{{roleOptions}}" range-key="label" bindchange="onEditRoleChange">
           <view class="picker-value">{{editingStaff.roleLabel || '请选择'}}</view>
         </picker>
+      </view>
+      <view class="form-item">
+        <text class="form-label">可服务区县</text>
+        <checkbox-group class="district-checks" bindchange="onServiceDistrictChange">
+          <label class="district-check" wx:for="{{districtCheckOptions}}" wx:key="name">
+            <checkbox value="{{item.name}}" checked="{{item.checked}}" />
+            <text>{{item.name}}</text>
+          </label>
+        </checkbox-group>
+        <text class="form-tip">用于设计、施工、监理跨区县候选人员匹配。</text>
       </view>
       <view class="form-item">
         <text class="form-label">工号</text>

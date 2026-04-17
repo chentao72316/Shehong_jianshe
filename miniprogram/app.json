@@ -18,6 +18,7 @@
     "pages/profile/profile",
     "pages/supervisor-task/supervisor-task",
     "pages/statistics/statistics",
+    "pages/system-config/system-config",
     "pages/area-config/area-config",
     "pages/role-config/role-config",
     "pages/announcement-detail/announcement-detail",

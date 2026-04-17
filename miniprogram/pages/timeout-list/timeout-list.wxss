@@ -27,7 +27,21 @@
 
 .timeout-days { font-size: 26rpx; font-weight: bold; }
 
+.timeout-type { background: #FFF1F0; color: #F5222D; border-radius: 8rpx; padding: 4rpx 10rpx; font-size: 22rpx; }
+
+.timeout-type.overall { background: #FFF7E6; color: #D46B08; }
+
+.mute-tag { background: #F6FFED; color: #389E0D; border-radius: 8rpx; padding: 4rpx 10rpx; font-size: 22rpx; }
+
+.mute-tag.muted { background: #F5F5F5; color: #8C8C8C; }
+
+.timeout-actions { display: flex; align-items: center; gap: 12rpx; }
+
 .remind-btn { background: #1890FF; color: #fff; border: none; border-radius: 8rpx; font-size: 24rpx; padding: 0 24rpx; height: 56rpx; line-height: 56rpx; }
+
+.mute-btn { background: #8C8C8C; color: #fff; border: none; border-radius: 8rpx; font-size: 24rpx; padding: 0 20rpx; height: 56rpx; line-height: 56rpx; }
+
+.mute-btn.restore { background: #52C41A; }
 
 .empty-state { display: flex; align-items: center; justify-content: center; padding: 120rpx 0; }
 

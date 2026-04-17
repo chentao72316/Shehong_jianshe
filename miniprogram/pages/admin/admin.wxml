@@ -33,6 +33,10 @@
         <text class="menu-badge" wx:if="{{areaConfigCount}}">{{areaConfigCount}}条</text>
         <text class="arrow">›</text>
       </view>
+      <view class="menu-item" data-url="/pages/system-config/system-config" bindtap="onNavTo">
+        <text class="menu-label">系统配置</text>
+        <text class="arrow">›</text>
+      </view>
       <view class="menu-item" data-url="/pages/role-config/role-config" bindtap="onNavTo">
         <text class="menu-label">角色权限</text>
         <text class="arrow">›</text>

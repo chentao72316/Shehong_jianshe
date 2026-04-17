@@ -1,17 +1,9 @@
 const AreaConfig = require('../models/area-config.model');
-const Config = require('../models/config.model');
 
 function mergeFilter(baseFilter, extraFilter) {
   if (!baseFilter || Object.keys(baseFilter).length === 0) return extraFilter;
   if (!extraFilter || Object.keys(extraFilter).length === 0) return baseFilter;
   return { $and: [baseFilter, extraFilter] };
-}
-
-async function getCenterNetworkMap(district) {
-  const config = await Config.findOne({ key: 'CENTER_NETWORK_MAP' }).lean();
-  if (!config || !config.value || typeof config.value !== 'object') return {};
-  const districtMap = config.value[district];
-  return districtMap && typeof districtMap === 'object' ? districtMap : {};
 }
 
 async function getManagedAcceptAreas(user) {
@@ -33,15 +25,6 @@ async function getManagedAcceptAreas(user) {
 
     areaConfigs.forEach((item) => {
       if (item?.acceptArea) acceptAreaSet.add(item.acceptArea);
-    });
-  }
-
-  if (gridName) {
-    const centerNetworkMap = await getCenterNetworkMap(district);
-    Object.entries(centerNetworkMap).forEach(([acceptArea, networkCenter]) => {
-      if (networkCenter === gridName) {
-        acceptAreaSet.add(acceptArea);
-      }
     });
   }
 
@@ -85,8 +68,7 @@ async function resolveDemandNetworkSupport(district, acceptArea, existingValue =
     .lean();
   if (areaConfig?.networkCenter) return areaConfig.networkCenter;
 
-  const centerNetworkMap = await getCenterNetworkMap(district);
-  return centerNetworkMap[acceptArea] || '';
+  return '';
 }
 
 module.exports = {

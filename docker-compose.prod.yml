@@ -6,8 +6,13 @@ services:
     restart: unless-stopped
     env_file:
       - ./server/.env.prod
+    environment:
+      - TZ=Asia/Shanghai
+      - NODE_ENV=production
+      - LOG_DIR=/app/logs
     volumes:
       - ./server/uploads:/app/uploads
+      - ./server/logs:/app/logs
     ports:
       - "127.0.0.1:3001:3000"
     networks:

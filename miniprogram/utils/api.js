@@ -28,6 +28,7 @@ const submitConstruction = (data) => request({ url: '/api/construction/submit', 
 // 超时督办
 const getTimeoutList = (params) => request({ url: '/api/timeout/list', method: 'GET', data: params });
 const sendRemind = (data) => request({ url: '/api/timeout/remind', method: 'POST', data });
+const setAutoReminderMute = (data) => request({ url: '/api/timeout/mute', method: 'POST', data });
 
 // 流程干预
 const forceStatus = (data) => request({ url: '/api/intervene/force-status', method: 'POST', data: { demandId: data.id, status: data.status, reason: data.reason } });
@@ -64,6 +65,7 @@ const getStaffDistinct = () => request({ url: '/api/admin/staff/distinct', metho
 
 // 系统配置
 const getConfig = (key) => request({ url: `/api/config/${key}`, method: 'GET' });
+const updateConfig = (key, data) => request({ url: `/api/config/${key}`, method: 'PUT', data });
 
 // 系统公告
 const getAnnouncementList = () => request({ url: '/api/announcement/list', method: 'GET' });
@@ -73,7 +75,7 @@ module.exports = {
   login, phonePasswordLogin, wxBind, bindPhone, changePassword, getUserRole,
   createDemand, updateDemand, getDemandList, getDemandDetail, getPendingList, rejectDemand, crossAreaReview, acknowledgeRejection,
   submitDesign, startConstruction, submitConstruction,
-  getTimeoutList, sendRemind,
+  getTimeoutList, sendRemind, setAutoReminderMute,
   forceStatus, addRemark, confirmDemand, reassign,
   getMessageList, markMessageRead, archiveMessage, archiveAllMessages,
   getGridStats, getAreaStats,
@@ -81,7 +83,7 @@ module.exports = {
   getAreaConfigList, saveAreaConfig, deleteAreaConfig, getAreaConfigByArea,
   getRoleConfigList, saveRoleConfig,
   getStaffDistinct,
-  getConfig,
+  getConfig, updateConfig,
   getAnnouncementList,
   getAnnouncementDetail
 };

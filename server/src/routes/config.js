@@ -4,6 +4,7 @@ const { createError } = require('../middleware/error-handler');
 const { requireRole } = require('../middleware/auth');
 const { logger } = require('../utils/logger');
 const { TIMEOUT_CONFIG_KEY, normalizeTimeoutConfig } = require('../utils/timeout-policy');
+const { AUTO_REMINDER_CONFIG_KEY, normalizeAutoReminderConfig } = require('../utils/auto-reminder-policy');
 
 const router = express.Router();
 const SENSITIVE_KEYS = new Set(['FASTGPT_API_KEY']);
@@ -105,6 +106,9 @@ router.put('/config/:key', requireRole('ADMIN'), async (req, res, next) => {
         throw createError(400, '总体超时天数须大于等于设计超时天数与施工超时天数之和');
       }
       value = normalized;
+    }
+    if (key === AUTO_REMINDER_CONFIG_KEY) {
+      value = normalizeAutoReminderConfig(value || {});
     }
 
     const config = await Config.findOneAndUpdate(

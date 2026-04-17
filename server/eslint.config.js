@@ -20,6 +20,7 @@ module.exports = [
         clearInterval: 'readonly',
         setTimeout: 'readonly',
         clearTimeout: 'readonly',
+        URL: 'readonly',
         FormData: 'readonly'
       }
     },

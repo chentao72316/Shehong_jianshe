@@ -1,0 +1,27 @@
+.config-header { display: flex; align-items: center; justify-content: space-between; gap: 20rpx; }
+
+.save-btn { width: 160rpx; height: 64rpx; line-height: 64rpx; border-radius: 8rpx; font-size: 26rpx; margin: 0; }
+
+.config-tip { background: #F6FFED; color: #3C8618; border: 1rpx solid #B7EB8F; border-radius: 8rpx; padding: 16rpx; font-size: 24rpx; line-height: 1.6; margin: 20rpx 0; }
+
+.field-group { display: flex; gap: 20rpx; padding: 18rpx 0; border-bottom: 1rpx solid #F5F5F5; }
+
+.field-group:last-child { border-bottom: none; }
+
+.half-item { flex: 1; min-width: 0; margin-bottom: 0; }
+
+.form-label { display: block; font-size: 24rpx; color: #595959; margin-bottom: 8rpx; }
+
+.number-row { display: flex; align-items: center; gap: 8rpx; }
+
+.form-input { height: 72rpx; border: 1rpx solid #E8E8E8; border-radius: 8rpx; padding: 0 16rpx; font-size: 28rpx; box-sizing: border-box; background: #fff; }
+
+.number-input { flex: 1; min-width: 0; }
+
+.unit-label { flex-shrink: 0; font-size: 24rpx; color: #8C8C8C; }
+
+.full-item { margin: 18rpx 0; }
+
+.helper-text { display: block; margin-top: 8rpx; font-size: 22rpx; line-height: 1.5; color: #8C8C8C; }
+
+.load-more { text-align: center; padding: 24rpx; font-size: 24rpx; color: #BFBFBF; }

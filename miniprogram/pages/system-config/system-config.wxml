@@ -1,0 +1,146 @@
+<view class="page-container">
+  <view class="card">
+    <view class="config-header">
+      <text class="section-title">超时阈值配置</text>
+      <button class="btn-primary save-btn" loading="{{saving}}" disabled="{{saving || loading}}" bindtap="onSave">保存</button>
+    </view>
+
+    <view class="config-tip">
+      <text>预警天数须小于对应超时天数；总体超时天数须不小于设计超时与施工超时之和。</text>
+    </view>
+
+    <view class="field-group" wx:for="{{fieldGroups}}" wx:key="index">
+      <view class="form-item half-item" wx:for="{{item}}" wx:for-item="field" wx:key="key">
+        <text class="form-label">{{field.label}}</text>
+        <view class="number-row">
+          <input
+            class="form-input number-input"
+            type="digit"
+            value="{{field.value}}"
+            data-field="{{field.key}}"
+            bindinput="onNumberInput"
+          />
+          <text class="unit-label">天</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="card">
+    <view class="config-header">
+      <text class="section-title">自动督办发送策略</text>
+      <button class="btn-primary save-btn" loading="{{savingAutoReminder}}" disabled="{{savingAutoReminder || loading}}" bindtap="onSaveAutoReminder">保存</button>
+    </view>
+
+    <view class="config-tip">
+      <text>固定按北京时间执行。普通批次用于预警和常规超时；紧急批次仅用于超时事件或特急工单。</text>
+    </view>
+
+    <view class="field-group">
+      <view class="form-item half-item">
+        <text class="form-label">发送开始时间</text>
+        <input
+          class="form-input"
+          value="{{autoReminderForm.businessWindowStart}}"
+          data-field="businessWindowStart"
+          placeholder="08:30"
+          bindinput="onAutoInput"
+        />
+      </view>
+      <view class="form-item half-item">
+        <text class="form-label">发送结束时间</text>
+        <input
+          class="form-input"
+          value="{{autoReminderForm.businessWindowEnd}}"
+          data-field="businessWindowEnd"
+          placeholder="18:30"
+          bindinput="onAutoInput"
+        />
+      </view>
+    </view>
+
+    <view class="field-group">
+      <view class="form-item half-item">
+        <text class="form-label">检查间隔</text>
+        <view class="number-row">
+          <input
+            class="form-input number-input"
+            type="number"
+            value="{{autoReminderForm.checkIntervalMinutes}}"
+            data-field="checkIntervalMinutes"
+            bindinput="onAutoNumberInput"
+          />
+          <text class="unit-label">分钟</text>
+        </view>
+      </view>
+      <view class="form-item half-item">
+        <text class="form-label">批次宽限</text>
+        <view class="number-row">
+          <input
+            class="form-input number-input"
+            type="number"
+            value="{{autoReminderForm.batchGraceMinutes}}"
+            data-field="batchGraceMinutes"
+            bindinput="onAutoNumberInput"
+          />
+          <text class="unit-label">分钟</text>
+        </view>
+      </view>
+    </view>
+
+    <view class="form-item full-item">
+      <text class="form-label">普通发送批次</text>
+      <input
+        class="form-input"
+        value="{{normalBatchText}}"
+        data-type="normal"
+        placeholder="09:00、14:30、17:30"
+        bindinput="onBatchTextInput"
+      />
+      <text class="helper-text">用顿号、逗号或空格分隔，格式 HH:mm。</text>
+    </view>
+
+    <view class="form-item full-item">
+      <text class="form-label">紧急发送批次</text>
+      <input
+        class="form-input"
+        value="{{urgentBatchText}}"
+        data-type="urgent"
+        placeholder="18:20"
+        bindinput="onBatchTextInput"
+      />
+      <text class="helper-text">仅超时事件或特急工单使用，可留空。</text>
+    </view>
+
+    <view class="field-group">
+      <view class="form-item half-item">
+        <text class="form-label">单工单日上限</text>
+        <view class="number-row">
+          <input
+            class="form-input number-input"
+            type="number"
+            value="{{autoReminderForm.maxSendsPerDemandPerDay}}"
+            data-field="maxSendsPerDemandPerDay"
+            bindinput="onAutoNumberInput"
+          />
+          <text class="unit-label">次</text>
+        </view>
+      </view>
+      <view class="form-item half-item">
+        <text class="form-label">单事件日上限</text>
+        <view class="number-row">
+          <input
+            class="form-input number-input"
+            type="number"
+            value="{{autoReminderForm.maxSendsPerEventPerDay}}"
+            data-field="maxSendsPerEventPerDay"
+            bindinput="onAutoNumberInput"
+          />
+          <text class="unit-label">次</text>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="load-more" wx:if="{{loading}}"><text>加载中...</text></view>
+</view>

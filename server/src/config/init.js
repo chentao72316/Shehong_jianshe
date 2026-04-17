@@ -1,6 +1,7 @@
 const Config = require('../models/config.model');
 const { logger } = require('../utils/logger');
 const { DEFAULT_TIMEOUT_CONFIG } = require('../utils/timeout-policy');
+const { DEFAULT_AUTO_REMINDER_CONFIG } = require('../utils/auto-reminder-policy');
 
 // 初始化系统配置
 async function initSystemConfig() {
@@ -17,6 +18,20 @@ async function initSystemConfig() {
       logger.info('系统配置初始化：TIMEOUT_CONFIG 已创建');
     } else {
       logger.info('系统配置初始化：TIMEOUT_CONFIG 已存在，跳过');
+    }
+
+    // 初始化自动督办发送配置
+    const existingAutoReminderConfig = await Config.findOne({ key: 'AUTO_REMINDER_CONFIG' });
+    if (!existingAutoReminderConfig) {
+      await Config.create({
+        key: 'AUTO_REMINDER_CONFIG',
+        value: DEFAULT_AUTO_REMINDER_CONFIG,
+        label: '自动督办发送配置',
+        description: '自动督办按北京时间检查、固定批次发送、每日限频，避免服务启动时间影响飞书提醒。'
+      });
+      logger.info('系统配置初始化：AUTO_REMINDER_CONFIG 已创建');
+    } else {
+      logger.info('系统配置初始化：AUTO_REMINDER_CONFIG 已存在，跳过');
     }
 
     // 初始化 FastGPT 知识问答配置
